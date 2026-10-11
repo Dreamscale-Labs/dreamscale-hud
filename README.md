@@ -301,6 +301,31 @@ RoboDojo render with Isaac Lab. `environments/robotwin/runtime.json` is 8 CPUs,
 32768 MiB, and one L4. The Isaac images use one L40S and 49152 MiB, because Kit
 needs the extra memory while it compiles shaders.
 
+## Real robots: bimanual YAM
+
+Real-robot rollouts are recorded from the Dreamscale CLI itself, with no HUD
+environment, container or runtime. On the robot computer (Linux, Python 3.12):
+
+```sh
+export HUD_API_KEY=...
+dreamscale run yam --model molmoact2-bimanual-yam --hud-job "MolmoAct2-BimanualYAM"
+```
+
+Dreamscale keeps driving the arms; HUD only records. Each session is one HUD job
+and each executed task one trace with the instruction, measured and commanded
+joints, the model's action chunks and one video per camera (top, left, right).
+After each task the operator grades the held final pose (`y`, `n` or a 0–1
+score plus an optional note), and the grade is the trace's reward. Requires
+[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a73 or later; its
+YAM guide (`dreamscale/guides/yam.md` in the package) covers rig setup.
+
+To download a job's videos as MP4s, with a side-by-side mosaic per trace and
+a `traces.json` of tasks, rewards and grades:
+
+```sh
+uv run python -m dreamscale_hud.trace_videos https://hud.ai/jobs/JOB_ID --output videos
+```
+
 ## Verify
 
 For independent concurrent simulators sharing HTTP inference, see the additive
