@@ -1,5 +1,5 @@
 [project]
-name = "hud-dreamscale-robolab"
+name = "dreamscale-hud-robolab"
 version = "0.1.0"
 description = "RoboLab as a HUD robot environment"
 requires-python = ">=3.11,<3.12"

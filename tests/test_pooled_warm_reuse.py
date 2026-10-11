@@ -7,9 +7,9 @@ import pytest
 from hud.eval.job import Job
 from hud.settings import settings
 
-from hud_dreamscale.cohort import cohort_manifest, cohort_tasks, run_cohort, summarize_cohort
-from hud_dreamscale.pooled_agent import PooledRobotAgent
-from hud_dreamscale.telemetry import Evidence
+from dreamscale_hud.cohort import cohort_manifest, cohort_tasks, run_cohort, summarize_cohort
+from dreamscale_hud.pooled_agent import PooledRobotAgent
+from dreamscale_hud.telemetry import Evidence
 from tests.test_pooled import Server, predict
 from tests.test_pooled_agent import local_pool
 

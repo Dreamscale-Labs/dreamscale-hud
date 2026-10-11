@@ -14,7 +14,7 @@ from pathlib import Path
 import modal
 
 HERE = Path(__file__).resolve().parent
-APP_NAME = "hud-dreamscale-robolab"
+APP_NAME = "dreamscale-hud-robolab"
 
 
 def main() -> None:

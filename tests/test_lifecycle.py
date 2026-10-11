@@ -9,11 +9,11 @@ from hud import LocalRuntime, Taskset
 from hud.environment.robot import RobotBridge, RobotEndpoint
 from hud.eval import Shared
 
+from dreamscale_hud.agent import DreamscaleRobotAgent
+from dreamscale_hud.cli import MeasuredRuntime, job_runtime, startup_metrics, summarize, tasks
+from dreamscale_hud.contract import CAMERAS, CONTROL_HZ, MODEL, build_contract
+from dreamscale_hud.video import export_videos
 from env import create_environment
-from hud_dreamscale.agent import DreamscaleRobotAgent
-from hud_dreamscale.cli import MeasuredRuntime, job_runtime, startup_metrics, summarize, tasks
-from hud_dreamscale.contract import CAMERAS, CONTROL_HZ, MODEL, build_contract
-from hud_dreamscale.video import export_videos
 
 
 class FakePolicy:
@@ -298,7 +298,7 @@ def test_timing_joins_by_task_after_a_failed_environment():
 
 
 async def test_all_five_suite_templates_keep_selection_and_reset_queues():
-    from hud_dreamscale.contract import TASK_SUITES
+    from dreamscale_hud.contract import TASK_SUITES
 
     policy = FakePolicy()
 
@@ -317,8 +317,8 @@ async def test_all_five_suite_templates_keep_selection_and_reset_queues():
 
 
 def test_libero_90_selection_preserves_last_pinned_task():
-    from hud_dreamscale.cli import parser
-    from hud_dreamscale.contract import TASK_SUITES
+    from dreamscale_hud.cli import parser
+    from dreamscale_hud.contract import TASK_SUITES
 
     args = parser().parse_args(["--suite", "libero_90", "--task-ids", "89"])
     assert args.task_ids == [89]
@@ -327,7 +327,7 @@ def test_libero_90_selection_preserves_last_pinned_task():
 
 
 async def test_background_connection_overlaps_shared_environment_and_resets_episodes():
-    from hud_dreamscale.contract import TASK_SUITES
+    from dreamscale_hud.contract import TASK_SUITES
 
     policy = FakePolicy()
     environment_ready = asyncio.Event()
@@ -413,7 +413,7 @@ async def test_background_identity_failure_closes_without_sending_actions():
 
 
 async def test_measured_shared_cleanup_preserves_the_original_inference_error():
-    from hud_dreamscale.telemetry import CURRENT_TASK
+    from dreamscale_hud.telemetry import CURRENT_TASK
 
     policy = FakePolicy(bad=True)
 

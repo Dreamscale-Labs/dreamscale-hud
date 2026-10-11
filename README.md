@@ -9,10 +9,11 @@ The [six-episode demo](docs/demo.md) records the validated taskset, all final
 qualification attempts and version pins. The final hosted run succeeded on all
 six episodes; this is an integration result, not a benchmark-wide accuracy claim.
 
-The package and CLI are `hud-dreamscale`, the Python module is `hud_dreamscale`,
-and the HUD environment is `dreamscale-libero`. Earlier releases used `dropbear`
-names throughout; they have no aliases, so redeploy the environment and update
-scripts and tasksets that name the old identifiers. The commands below are exact.
+The package and CLI are `dreamscale-hud`, the Python module is `dreamscale_hud`,
+and the HUD environment is `dreamscale-libero`. The repository, package, CLI and
+module were previously named `hud-dreamscale`/`hud_dreamscale`, and earlier
+releases used `dropbear` names; neither has aliases, so update scripts and
+tasksets that name the old identifiers. The commands below are exact.
 
 ## Install
 
@@ -36,9 +37,9 @@ upstream dependency constraints. No global Python environment is changed.
 ## Local simulation
 
 ```sh
-docker build -f Dockerfile.hud -t hud-dreamscale-libero:local .
-docker run --rm hud-dreamscale-libero:local python -m environments.libero.preflight
-uv run hud-dreamscale --runtime docker --task-ids 0 --init-state-ids 0
+docker build -f Dockerfile.hud -t dreamscale-hud-libero:local .
+docker run --rm dreamscale-hud-libero:local python -m environments.libero.preflight
+uv run dreamscale-hud --runtime docker --task-ids 0 --init-state-ids 0
 ```
 
 The container runs CPU MuJoCo physics and OSMesa rendering. Its separately
@@ -56,7 +57,7 @@ task and rejects invalid physics. The grade records the checked runtime and
 architecture. Run this inexpensive check independently with:
 
 ```sh
-docker run --rm hud-dreamscale-libero:local python -m environments.libero.physics
+docker run --rm dreamscale-hud-libero:local python -m environments.libero.physics
 ```
 
 The corrected image has passed native Linux/amd64 CPU/OSMesa preflight and all
@@ -86,7 +87,7 @@ uv run --project environments/libero python -m environments.libero.bootstrap
 uv run --project environments/libero hud serve env.py --host 127.0.0.1 --port 8765
 ```
 
-Keep that server running and use `uv run hud-dreamscale --runtime attached
+Keep that server running and use `uv run dreamscale-hud --runtime attached
 --env-url tcp://127.0.0.1:8765` in another terminal. The server and runner default
 to 20 Hz. This remains local simulation with HUD traces, not HUD-hosted execution.
 
@@ -98,13 +99,13 @@ the selected task and initial-state IDs to each suite while reusing one inferenc
 connection. For example, one episode per suite:
 
 ```sh
-uv run hud-dreamscale --runtime hud --all-suites --task-ids 0 --init-state-ids 0
+uv run dreamscale-hud --runtime hud --all-suites --task-ids 0 --init-state-ids 0
 ```
 
 To choose a different task in each suite, use the portable HUD taskset:
 
 ```sh
-uv run hud-dreamscale --runtime hud --taskset tasksets/five-suites.json
+uv run dreamscale-hud --runtime hud --taskset tasksets/five-suites.json
 ```
 
 It selects task 0 in the first four suites and task 50 (alphabet soup into basket) in
@@ -136,7 +137,7 @@ After local validation:
 
 ```sh
 uv run hud deploy . --no-env --runtime hud
-uv run hud-dreamscale --runtime hud
+uv run dreamscale-hud --runtime hud
 ```
 
 This uses [`HUDRuntime`](https://docs.hud.ai/v6/reference/runtime): the CPU
@@ -207,13 +208,16 @@ repeats reuse the inference session; they do not prove parked-session reclaim.
 
 ```python
 from hud import HUDRuntime, Taskset
-from hud_dreamscale import DreamscaleRobotAgent
-from hud_dreamscale.cli import tasks
+from dreamscale_hud import DreamscaleRobotAgent
+from dreamscale_hud.cli import tasks
+
 
 async def evaluate():
     async with DreamscaleRobotAgent() as agent:
         return await Taskset("libero-demo", tasks()).run(
-            agent, runtime=HUDRuntime(), max_concurrent=1,
+            agent,
+            runtime=HUDRuntime(),
+            max_concurrent=1,
         )
 ```
 
@@ -244,7 +248,7 @@ wave; see `environments/robolab/README.md`.
 
 What runs where:
 
-- **LIBERO, deployed HUD env.** `uv run hud-dreamscale --runtime hud`. The
+- **LIBERO, deployed HUD env.** `uv run dreamscale-hud --runtime hud`. The
   Dreamscale agent stays on this machine. The simulator is the deployed
   `dreamscale-libero` env.
 - **RoboTwin, Modal.** `uv run python environments/robotwin/run_modal.py`.
@@ -307,7 +311,7 @@ environment and the `PooledProvider`/`PooledRobotAgent`/`RuntimePool` interfaces
 ```sh
 uv run ruff check .
 uv run pytest -q
-HUD_DREAMSCALE_IMAGE=hud-dreamscale-libero:local uv run pytest -q tests/test_container.py
+DREAMSCALE_HUD_IMAGE=dreamscale-hud-libero:local uv run pytest -q tests/test_container.py
 ```
 
 Tests exercise the real HUD robot socket, claim/grade/release lifecycle, input

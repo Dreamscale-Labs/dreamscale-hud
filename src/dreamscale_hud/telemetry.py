@@ -5,7 +5,7 @@ import time
 from contextvars import ContextVar
 from pathlib import Path
 
-CURRENT_TASK = ContextVar("hud_dreamscale_task", default=None)
+CURRENT_TASK = ContextVar("dreamscale_hud_task", default=None)
 
 
 class Evidence:

@@ -5,8 +5,7 @@ import os
 from hud import Environment
 from hud.environment.robot import RobotEndpoint
 
-from environments.libero.bridge import LiberoBridge
-from hud_dreamscale.contract import (
+from dreamscale_hud.contract import (
     ENV_NAME,
     LEGACY_PROFILE,
     MAX_STEPS,
@@ -16,6 +15,7 @@ from hud_dreamscale.contract import (
     POOLED_PROFILE,
     TASK_SUITES,
 )
+from environments.libero.bridge import LiberoBridge
 
 
 def create_environment(endpoint=None, *, profile=LEGACY_PROFILE, environment=None):

@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from dreamscale.errors import DreamscaleError
 
-from hud_dreamscale import pooled
-from hud_dreamscale.pooled import SlotFencedError
+from dreamscale_hud import pooled
+from dreamscale_hud.pooled import SlotFencedError
 from tests.test_pooled import Server, predict
 
 

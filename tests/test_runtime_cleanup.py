@@ -4,7 +4,7 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from hud_dreamscale.runtime_cleanup import delete_owned_sessions
+from dreamscale_hud.runtime_cleanup import delete_owned_sessions
 
 
 async def test_delete_retries_rejections_but_never_claims_provider_termination():

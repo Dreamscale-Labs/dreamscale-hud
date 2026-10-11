@@ -225,7 +225,7 @@ async def evaluate(args):
             },
             versions={
                 n: importlib.metadata.version(n)
-                for n in ("hud-dreamscale", "hud", "dreamscale", "numpy")
+                for n in ("dreamscale-hud", "hud", "dreamscale", "numpy")
             },
         )
         async with (
@@ -310,7 +310,7 @@ async def evaluate(args):
 def parser():
     p = argparse.ArgumentParser(description="Evaluate MolmoAct2-LIBERO with HUD and Dreamscale")
     p.add_argument("--runtime", choices=("docker", "hud", "attached"), default="docker")
-    p.add_argument("--image", default="hud-dreamscale-libero:local")
+    p.add_argument("--image", default="dreamscale-hud-libero:local")
     p.add_argument("--env-url", help="HUD control URL for --runtime attached")
     p.add_argument("--suite", choices=TASK_SUITES, default="libero_spatial")
     p.add_argument("--all-suites", action="store_true", help="Evaluate all five LIBERO suites")

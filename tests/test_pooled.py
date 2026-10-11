@@ -13,7 +13,7 @@ import pytest
 from dreamscale.inference import AsyncInferenceClient
 from PIL import Image
 
-from hud_dreamscale.pooled import PooledProvider, RequestFailedError, SlotFencedError
+from dreamscale_hud.pooled import PooledProvider, RequestFailedError, SlotFencedError
 
 
 def observation():
@@ -269,7 +269,7 @@ async def test_real_sdk_png_state_journal_and_sequences_across_episodes(tmp_path
 async def test_journal_timing_includes_lock_wait_without_changing_writes(
     monkeypatch, tmp_path, mode, terminal_event
 ):
-    from hud_dreamscale import pooled
+    from dreamscale_hud import pooled
 
     server, events, encoded = Server(), [], asyncio.Event()
     server.mode = mode
@@ -712,7 +712,7 @@ async def test_journal_checkpoints_do_not_queue_behind_a_saturated_default_execu
 
 async def test_provider_clients_get_connect_retries_and_lane_sized_keepalive():
     """Connection-phase failures precede any request bytes, so retrying them is safe."""
-    from hud_dreamscale import pooled
+    from dreamscale_hud import pooled
 
     seen = []
 
@@ -738,7 +738,7 @@ async def test_provider_clients_get_connect_retries_and_lane_sized_keepalive():
 async def test_tracing_transport_records_connect_phases_only_for_new_connections():
     import asyncio
 
-    from hud_dreamscale.pooled import TracingTransport
+    from dreamscale_hud.pooled import TracingTransport
 
     async def handle(reader, writer):
         while True:
@@ -779,7 +779,7 @@ async def test_tracing_transport_records_connect_phases_only_for_new_connections
 async def test_tracing_transport_attributes_failed_connections():
     import socket
 
-    from hud_dreamscale.pooled import TracingTransport
+    from dreamscale_hud.pooled import TracingTransport
 
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -798,7 +798,7 @@ async def test_tracing_transport_attributes_failed_connections():
 
 
 def test_connect_phases_from_trace_marks():
-    from hud_dreamscale.pooled import connect_phases
+    from dreamscale_hud.pooled import connect_phases
 
     assert connect_phases({}) is None
     marks = {
@@ -815,7 +815,7 @@ def test_connect_phases_from_trace_marks():
 
 
 def test_provider_transport_is_http2_capable_when_requested():
-    from hud_dreamscale.pooled import PooledProvider, TracingTransport
+    from dreamscale_hud.pooled import PooledProvider, TracingTransport
 
     provider = PooledProvider(concurrency=2, http2=True)
     transport = provider._transport()
@@ -827,7 +827,7 @@ def test_provider_transport_is_http2_capable_when_requested():
 async def test_pinned_backend_connects_by_cached_address_and_tls_keeps_hostname_semantics():
     import asyncio
 
-    from hud_dreamscale.pooled import PinnedResolver, TracingTransport
+    from dreamscale_hud.pooled import PinnedResolver, TracingTransport
 
     async def handle(reader, writer):
         head = b""
@@ -876,7 +876,7 @@ async def test_pinned_backend_connects_by_cached_address_and_tls_keeps_hostname_
 
 
 async def test_pinned_resolver_serves_stale_addresses_when_refresh_fails():
-    from hud_dreamscale.pooled import PinnedResolver
+    from dreamscale_hud.pooled import PinnedResolver
 
     answers = [[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]]
 
@@ -898,7 +898,7 @@ async def test_pinned_resolver_serves_stale_addresses_when_refresh_fails():
 
 
 def test_provider_pins_the_resolver_by_default():
-    from hud_dreamscale.pooled import PinnedBackend, PooledProvider
+    from dreamscale_hud.pooled import PinnedBackend, PooledProvider
 
     provider = PooledProvider(concurrency=2)
     assert isinstance(provider._transport()._pool._network_backend, PinnedBackend)

@@ -10,8 +10,8 @@ import asyncio
 from hud import HUDRuntime
 from hud.eval.job import Job
 
-from hud_dreamscale import PooledProvider, PooledRobotAgent, RuntimePool
-from hud_dreamscale.cohort import cohort_tasks, run_cohort, summarize_cohort
+from dreamscale_hud import PooledProvider, PooledRobotAgent, RuntimePool
+from dreamscale_hud.cohort import cohort_tasks, run_cohort, summarize_cohort
 
 
 async def evaluate(runtime, *, release_id, release_sha256, concurrency=8, api_base=None):

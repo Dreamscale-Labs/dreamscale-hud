@@ -783,7 +783,7 @@ robot = [
 ]
 
 [[package]]
-name = "hud-dreamscale-libero-environment"
+name = "dreamscale-hud-libero-environment"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

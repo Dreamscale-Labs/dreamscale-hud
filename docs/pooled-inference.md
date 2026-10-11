@@ -70,9 +70,9 @@ evidence; live qualification is recorded separately in the product repository.
 Capture HUD environment usage immediately before and after each campaign cell:
 
 ```bash
-uv run python -m hud_dreamscale.provider_usage --api-key-id HUD_KEY_UUID --output before.json
-uv run python -m hud_dreamscale.campaign_run --config cell.json --ledger costs.json --output cell-evidence
-uv run python -m hud_dreamscale.provider_usage --api-key-id HUD_KEY_UUID --before before.json --expected-leases 128 --output after.json
+uv run python -m dreamscale_hud.provider_usage --api-key-id HUD_KEY_UUID --output before.json
+uv run python -m dreamscale_hud.campaign_run --config cell.json --ledger costs.json --output cell-evidence
+uv run python -m dreamscale_hud.provider_usage --api-key-id HUD_KEY_UUID --before before.json --expected-leases 128 --output after.json
 ```
 
 Use the key's UUID, never its secret. Keep every snapshot if billing/termination

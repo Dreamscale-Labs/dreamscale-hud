@@ -812,7 +812,7 @@ robot = [
 ]
 
 [[package]]
-name = "hud-dreamscale"
+name = "dreamscale-hud"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

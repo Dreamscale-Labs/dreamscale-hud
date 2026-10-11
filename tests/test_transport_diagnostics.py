@@ -6,7 +6,7 @@ import httpx
 import pytest
 from dreamscale.errors import from_payload
 
-from hud_dreamscale.pooled import RequestFailedError, _error_fields, _http_operation
+from dreamscale_hud.pooled import RequestFailedError, _error_fields, _http_operation
 from tests.test_pooled import Server, predict
 
 

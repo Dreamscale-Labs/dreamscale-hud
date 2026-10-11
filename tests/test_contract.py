@@ -5,8 +5,8 @@ import pytest
 from hud.capabilities.robot import _packb, _unpackb
 from PIL import Image
 
-from hud_dreamscale.adapter import LiberoAdapter
-from hud_dreamscale.contract import (
+from dreamscale_hud.adapter import LiberoAdapter
+from dreamscale_hud.contract import (
     CAMERAS,
     POOLED_PROFILE,
     build_contract,
