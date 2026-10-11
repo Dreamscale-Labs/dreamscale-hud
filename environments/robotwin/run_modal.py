@@ -70,7 +70,7 @@ def make_runtime() -> ModalRuntime:
         # Matches Dockerfile.hud. Modal replaces the image CMD, so name it here.
         command=["uv", "run", "hud", "serve", "env.py", "--host", "0.0.0.0", "--port", "8765"],
         port=8765,
-        app_name="hud-dreamscale-robotwin",
+        app_name="dreamscale-hud-robotwin",
         runtime_config=config,
     )
 

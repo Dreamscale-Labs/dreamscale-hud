@@ -58,7 +58,7 @@ ACTION_NAMES = ["delta_x", "delta_y", "delta_z", "delta_rx", "delta_ry", "delta_
 TASK_SUITES = {
     suite: tuple(names)
     for suite, names in json.loads(
-        files("hud_dreamscale").joinpath("task_manifest.json").read_text()
+        files("dreamscale_hud").joinpath("task_manifest.json").read_text()
     ).items()
 }
 TASK_NAMES = TASK_SUITES["libero_spatial"]

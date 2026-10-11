@@ -80,7 +80,7 @@ def serving_identity(policy, *, resolved_artifact=None, control_hz=CONTROL_HZ):
     )
     if not fingerprint:
         raise ValueError("Dreamscale did not report its TensorRT artifact fingerprint")
-    contracts = json.loads(files("hud_dreamscale").joinpath("serving_contracts.json").read_text())
+    contracts = json.loads(files("dreamscale_hud").joinpath("serving_contracts.json").read_text())
     artifact = contracts.get(artifact_id)
     if artifact is None or artifact["fingerprint"] != fingerprint:
         raise ValueError("Unverified TensorRT artifact; verify its checkpoint manifest before use")

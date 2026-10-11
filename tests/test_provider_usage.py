@@ -1,6 +1,6 @@
 import pytest
 
-from hud_dreamscale.provider_usage import audit, snapshot
+from dreamscale_hud.provider_usage import audit, snapshot
 
 KEY = "366ca626-2032-4af9-a664-812678f58098"
 

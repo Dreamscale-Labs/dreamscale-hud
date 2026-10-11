@@ -83,7 +83,7 @@ def make_runtime() -> ModalRuntime:
             "8765",
         ],
         port=8765,
-        app_name="hud-dreamscale-robolab",
+        app_name="dreamscale-hud-robolab",
         runtime_config=config,
     )
 

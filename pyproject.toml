@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hud-dreamscale"
+name = "dreamscale-hud"
 version = "0.1.0"
 description = "HUD robotics evaluations powered by Dreamscale inference"
 requires-python = ">=3.12,<3.13"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hud-dreamscale = "hud_dreamscale.cli:main"
+dreamscale-hud = "dreamscale_hud.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8.3,<9", "pytest-asyncio>=1,<2", "ruff>=0.12"]

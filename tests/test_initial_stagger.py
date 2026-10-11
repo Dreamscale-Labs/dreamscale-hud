@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 import numpy as np
 import pytest
 
-from hud_dreamscale import pooled_agent
-from hud_dreamscale.pooled_agent import PooledInput, PooledModel, PooledRobotAgent
+from dreamscale_hud import pooled_agent
+from dreamscale_hud.pooled_agent import PooledInput, PooledModel, PooledRobotAgent
 
 
 def make_agent(width):

@@ -1,5 +1,5 @@
 [project]
-name = "hud-dreamscale-robotwin"
+name = "dreamscale-hud-robotwin"
 version = "0.1.0"
 description = "RoboTwin 2.0 as a HUD robot environment"
 requires-python = ">=3.12,<3.13"

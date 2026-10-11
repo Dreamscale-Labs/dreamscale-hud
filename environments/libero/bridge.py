@@ -8,14 +8,13 @@ from pathlib import Path
 import numpy as np
 from hud.environment.robot import RobotBridge
 
-from environments.libero.physics import check_contact_physics
-from hud_dreamscale.contract import (
+from dreamscale_hud.contract import (
     CAMERAS,
     CONTROL_HZ,
     LEGACY_PROFILE,
     MAX_STEPS,
-    POOLED_PROFILE,
     PI05_PROFILE,
+    POOLED_PROFILE,
     POOLED_RESOLUTION,
     TASK_SUITES,
     build_contract,
@@ -23,6 +22,7 @@ from hud_dreamscale.contract import (
     pooled_state_from_raw,
     state_from_raw,
 )
+from environments.libero.physics import check_contact_physics
 
 
 class LiberoBridge(RobotBridge):

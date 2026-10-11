@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from hud_dreamscale.campaign_run import parallel_startup
+from dreamscale_hud.campaign_run import parallel_startup
 
 
 @pytest.mark.parametrize("body_fails", [False, True])
@@ -114,8 +114,8 @@ async def test_external_cancellation_waits_for_both_partial_startups_to_clean_up
 async def test_compute_failure_during_hud_post_receives_and_closes_remote_lease(monkeypatch):
     from hud import HUDRuntime
 
-    from hud_dreamscale.cohort import cohort_tasks
-    from hud_dreamscale.runtime_pool import RuntimePool
+    from dreamscale_hud.cohort import cohort_tasks
+    from dreamscale_hud.runtime_pool import RuntimePool
 
     allocated, response_ready = asyncio.Event(), asyncio.Event()
     deleted, evidence = [], []
@@ -165,8 +165,8 @@ async def test_compute_failure_during_hud_post_receives_and_closes_remote_lease(
 
 
 async def test_protected_lease_acquisition_still_has_a_deadline():
-    from hud_dreamscale.cohort import cohort_tasks
-    from hud_dreamscale.runtime_pool import RuntimePool
+    from dreamscale_hud.cohort import cohort_tasks
+    from dreamscale_hud.runtime_pool import RuntimePool
 
     cleaned = []
 

@@ -7,9 +7,9 @@ import pytest
 from hud import Runtime
 from hud.telemetry.context import get_current_trace_id
 
-from hud_dreamscale.cohort import cohort_tasks
-from hud_dreamscale.runtime_pool import RuntimePool
-from hud_dreamscale.telemetry import CURRENT_TASK
+from dreamscale_hud.cohort import cohort_tasks
+from dreamscale_hud.runtime_pool import RuntimePool
+from dreamscale_hud.telemetry import CURRENT_TASK
 
 
 @pytest.fixture(autouse=True)
@@ -20,7 +20,7 @@ def mock_control_connection(monkeypatch):
             manifest=SimpleNamespace(server_info=SimpleNamespace(name="dreamscale-libero-pooled"))
         )
 
-    monkeypatch.setattr("hud_dreamscale.runtime_pool.connect", ready)
+    monkeypatch.setattr("dreamscale_hud.runtime_pool.connect", ready)
 
 
 async def test_pool_exclusive_stable_lane_and_nested_borrow():

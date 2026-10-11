@@ -1,5 +1,5 @@
 [project]
-name = "hud-dreamscale-robodojo"
+name = "dreamscale-hud-robodojo"
 version = "0.1.0"
 description = "RoboDojo simulation as a HUD robot environment"
 requires-python = ">=3.11,<3.12"

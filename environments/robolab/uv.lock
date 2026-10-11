@@ -830,7 +830,7 @@ robot = [
 ]
 
 [[package]]
-name = "hud-dreamscale-robolab"
+name = "dreamscale-hud-robolab"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

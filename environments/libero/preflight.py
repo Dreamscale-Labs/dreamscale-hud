@@ -6,8 +6,8 @@ import os
 import numpy as np
 import torch
 
+from dreamscale_hud.contract import CAMERAS, TASK_NAMES
 from environments.libero.bridge import LiberoBridge
-from hud_dreamscale.contract import CAMERAS, TASK_NAMES
 
 
 def main():

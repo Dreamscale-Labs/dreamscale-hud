@@ -8,8 +8,8 @@ import httpx
 import numpy as np
 import pytest
 
-from hud_dreamscale import pooled
-from hud_dreamscale.pooled import PooledProvider, RequestFailedError, SlotFencedError
+from dreamscale_hud import pooled
+from dreamscale_hud.pooled import PooledProvider, RequestFailedError, SlotFencedError
 from tests.test_pooled import Server, observation, predict
 
 

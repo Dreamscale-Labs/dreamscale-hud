@@ -1,6 +1,6 @@
 """Run one reserved production VLA campaign cell; never choose a fallback.
 
-python -m hud_dreamscale.campaign_run --config cell.json --ledger costs.json --output new-directory
+python -m dreamscale_hud.campaign_run --config cell.json --ledger costs.json --output new-directory
 The caller supplies immutable release pins and a cost estimate based on qualification.
 Liability remains reserved until provider billing and exact cleanup are reconciled.
 """

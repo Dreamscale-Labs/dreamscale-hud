@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from hud_dreamscale.campaign import (
+from dreamscale_hud.campaign import (
     check_budget,
     design,
     digest,
@@ -10,8 +10,8 @@ from hud_dreamscale.campaign import (
     qualify,
     task_rows,
 )
-from hud_dreamscale.campaign_metrics import summarize
-from hud_dreamscale.campaign_run import preflight
+from dreamscale_hud.campaign_metrics import summarize
+from dreamscale_hud.campaign_run import preflight
 
 
 def test_frozen_128_unique_tasks_and_five_matched_waves():
@@ -196,7 +196,7 @@ def test_smoke_subset_cannot_reduce_measurements_or_skip_lanes(kind, concurrency
 def test_production_hud_accepts_default_and_www_alias(web):
     from types import SimpleNamespace
 
-    from hud_dreamscale.campaign_run import verify_production_hud
+    from dreamscale_hud.campaign_run import verify_production_hud
 
     verify_production_hud(
         SimpleNamespace(
@@ -217,7 +217,7 @@ def test_production_hud_accepts_default_and_www_alias(web):
 def test_production_hud_rejects_nonproduction_backend(web, api):
     from types import SimpleNamespace
 
-    from hud_dreamscale.campaign_run import verify_production_hud
+    from dreamscale_hud.campaign_run import verify_production_hud
 
     with pytest.raises(ValueError, match="production platform"):
         verify_production_hud(

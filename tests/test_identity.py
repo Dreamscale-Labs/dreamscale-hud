@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from hud_dreamscale.agent import ready_target_artifact, serving_identity
+from dreamscale_hud.agent import ready_target_artifact, serving_identity
 from tests.test_lifecycle import FakePolicy
 
 

@@ -84,7 +84,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--build-image", action="store_true", help="build Dockerfile.hud on Modal")
     parser.add_argument(
-        "--sandbox-cloud", default="oci",
+        "--sandbox-cloud",
+        default="oci",
         help="Modal cloud for simulator sandboxes ('' to let Modal choose); see pin_sandbox_cloud",
     )
     parser.add_argument("--dreamscale-home", type=Path, help="use this DREAMSCALE_HOME as-is")
@@ -220,7 +221,7 @@ def make_runtime(image: str, *, build: bool):
         image=modal_image,
         command=SERVE_COMMAND,
         port=8765,
-        app_name="hud-dreamscale-robolab",
+        app_name="dreamscale-hud-robolab",
         runtime_config=config,
     )
 

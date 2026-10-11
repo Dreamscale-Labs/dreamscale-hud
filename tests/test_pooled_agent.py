@@ -6,13 +6,13 @@ import pytest
 from hud import Environment, LocalRuntime, Taskset
 from hud.environment.robot import RobotEndpoint
 
+from dreamscale_hud.cohort import cohort_tasks, run_cohort, summarize_cohort
+from dreamscale_hud.contract import CAMERAS, POOLED_ENV_NAME, POOLED_PROFILE, build_contract
+from dreamscale_hud.pooled_agent import PooledLiberoAdapter, PooledRobotAgent
+from dreamscale_hud.runtime_pool import RuntimePool
+from dreamscale_hud.telemetry import Evidence
+from dreamscale_hud.video import export_videos
 from env import create_environment
-from hud_dreamscale.cohort import cohort_tasks, run_cohort, summarize_cohort
-from hud_dreamscale.contract import CAMERAS, POOLED_ENV_NAME, POOLED_PROFILE, build_contract
-from hud_dreamscale.pooled_agent import PooledLiberoAdapter, PooledRobotAgent
-from hud_dreamscale.runtime_pool import RuntimePool
-from hud_dreamscale.telemetry import Evidence
-from hud_dreamscale.video import export_videos
 from tests.test_lifecycle import FakeBridge
 
 
@@ -101,7 +101,7 @@ async def test_two_parallel_lanes_reuse_with_real_hud_wire_grading_and_video(
     from hud.settings import settings
 
     monkeypatch.setattr(settings, "telemetry_local_dir", str(tmp_path / "traces"))
-    monkeypatch.setattr("hud_dreamscale.pooled_agent._INITIAL_STAGGER_STEP_S", stagger_step_s)
+    monkeypatch.setattr("dreamscale_hud.pooled_agent._INITIAL_STAGGER_STEP_S", stagger_step_s)
     evidence = Evidence(tmp_path / "timings.jsonl")
     rows = cohort_tasks(2, max_steps=3)
     provider = FakeProvider(2)
@@ -179,7 +179,7 @@ async def test_eight_lane_control_and_stagger_with_real_hud_wire(
     from hud.settings import settings
 
     monkeypatch.setattr(settings, "telemetry_local_dir", str(tmp_path / "traces"))
-    monkeypatch.setattr("hud_dreamscale.pooled_agent._INITIAL_STAGGER_STEP_S", stagger_step_s)
+    monkeypatch.setattr("dreamscale_hud.pooled_agent._INITIAL_STAGGER_STEP_S", stagger_step_s)
     evidence = Evidence(tmp_path / "timings.jsonl")
     rows = cohort_tasks(8, max_steps=3)
     provider = FakeProvider(8)
@@ -246,7 +246,7 @@ async def test_cancelled_episode_releases_every_claim():
 
 
 async def test_cancel_during_initial_stagger_releases_hud_claim_without_submission(monkeypatch):
-    monkeypatch.setattr("hud_dreamscale.pooled_agent._INITIAL_STAGGER_STEP_S", 100.0)
+    monkeypatch.setattr("dreamscale_hud.pooled_agent._INITIAL_STAGGER_STEP_S", 100.0)
     rows = cohort_tasks(2, max_steps=3)
     provider = FakeProvider(2, wait=True)
     events = []
