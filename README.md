@@ -316,7 +316,7 @@ and each executed task one trace with the instruction, measured and commanded
 joints, the model's action chunks and one video per camera (top, left, right).
 After each task the operator grades the held final pose (`y`, `n` or a 0–1
 score plus an optional note), and the grade is the trace's reward. Requires
-[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a73 or later; its
+[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a74 or later; its
 YAM guide (`dreamscale/guides/yam.md` in the package) covers rig setup.
 
 To download a job's videos as MP4s, with a side-by-side mosaic per trace and
