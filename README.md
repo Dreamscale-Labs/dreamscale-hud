@@ -304,11 +304,14 @@ needs the extra memory while it compiles shaders.
 ## Real robots: bimanual YAM
 
 Real-robot rollouts are recorded from the Dreamscale CLI itself, with no HUD
-environment, container or runtime. On the robot computer (Linux, Python 3.12):
+environment, container or runtime. On the robot computer, connect HUD once (it
+installs HUD support and the `hud` CLI, opens the API key page and saves your
+key), then add `--hud` to a run; `--hud-job` optionally names the job:
 
 ```sh
-export HUD_API_KEY=...
-dreamscale run yam --model molmoact2-bimanual-yam --hud-job "MolmoAct2-BimanualYAM"
+uv tool install dreamscale
+dreamscale integrations hud setup
+dreamscale run yam --model molmoact2-bimanual-yam --hud --hud-job "MolmoAct2-BimanualYAM"
 ```
 
 Dreamscale keeps driving the arms; HUD only records. Each session is one HUD job
@@ -316,7 +319,7 @@ and each executed task one trace with the instruction, measured and commanded
 joints, the model's action chunks and one video per camera (top, left, right).
 After each task the operator grades the held final pose (`y`, `n` or a 0–1
 score plus an optional note), and the grade is the trace's reward. Requires
-[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a74 or later; its
+[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a77 or later; its
 YAM guide (`dreamscale/guides/yam.md` in the package) covers rig setup.
 
 To download a job's videos as MP4s, with a side-by-side mosaic per trace and
