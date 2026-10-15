@@ -26,8 +26,9 @@ from hud.eval import ModalRuntime, Task
 MODAL_TOKEN_ID = ""
 MODAL_TOKEN_SECRET = ""
 
-# Image from `hud deploy --runtime modal`. Blank builds Dockerfile.hud instead.
-IMAGE = "modal://im-p0jN9zrruXkRAg7r9Uql1g"
+# Your prebuilt image id (modal://im-...), e.g. from `hud deploy --runtime modal`.
+# Blank builds Dockerfile.hud on Modal (cached after the first build).
+IMAGE = ""
 
 HERE = Path(__file__).parent
 

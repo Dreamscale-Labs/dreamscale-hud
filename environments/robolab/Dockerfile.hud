@@ -28,9 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY pyproject.toml ./
-# The RoboLab revision Dreamscale's Cosmos / FLUX DROID contracts pin
-# (dropbear_transport.cosmos3.ROBOLAB_REVISION). Task classes, cameras and
-# episode lengths in tasks.json are taken from this commit.
+# The pinned RoboLab revision. Task classes, cameras and episode lengths in
+# tasks.json are taken from this commit.
 ARG ROBOLAB_REVISION=ad45d4f974725d020f82c2b0d77d78533aeba2b3
 # One venv: HUD first, then RoboLab's Isaac extra into the same environment.
 # --no-dev keeps the local agent/test group (dreamscale SDK, modal, pytest) out.

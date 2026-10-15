@@ -5,7 +5,7 @@ and a retry's graded result fills an earlier pre-launch failure. Latency is pool
 from every request row in the episodes' timing.jsonl files.
 
     uv run --project environments/robolab python environments/robolab/aggregate.py \
-        runs/flux3-prod-ep0 runs/flux3-prod-ep0-retry1 ... --output runs/flux3-results.json
+        runs/flux3-w1 runs/flux3-w1-retry1 ... --output runs/flux3-results.json
 """
 
 from __future__ import annotations

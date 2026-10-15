@@ -11,27 +11,21 @@ from hud.environment.robot import RobotBridge
 from dreamscale_hud.contract import (
     CAMERAS,
     CONTROL_HZ,
-    LEGACY_PROFILE,
     MAX_STEPS,
-    PI05_PROFILE,
-    POOLED_PROFILE,
-    POOLED_RESOLUTION,
     TASK_SUITES,
     build_contract,
     finite_array,
-    pooled_state_from_raw,
     state_from_raw,
 )
 from environments.libero.physics import check_contact_physics
 
 
 class LiberoBridge(RobotBridge):
-    def __init__(self, profile=LEGACY_PROFILE):
+    def __init__(self):
         super().__init__()
         self.control_hz = int(os.environ.get("LIBERO_CONTROL_HZ", CONTROL_HZ))
-        self.contract = build_contract(self.control_hz, profile=profile)
-        self.profile = profile
-        self.resolution = POOLED_RESOLUTION if profile == POOLED_PROFILE else 256
+        self.contract = build_contract(self.control_hz)
+        self.resolution = 256
         self.step_timeout = 90.0
         self._env = None
         self._obs = None
@@ -126,12 +120,7 @@ class LiberoBridge(RobotBridge):
             key: np.ascontiguousarray(np.asarray(self._obs[key])[::-1, ::-1])[None]
             for key in CAMERAS
         }
-        if self.profile in (POOLED_PROFILE, PI05_PROFILE):
-            data.update(
-                {key: value[None] for key, value in pooled_state_from_raw(self._obs).items()}
-            )
-        else:
-            data["state"] = state_from_raw(self._obs)[None]
+        data["state"] = state_from_raw(self._obs)[None]
         return data, np.array([self.terminated], dtype=bool)
 
     def result(self):
@@ -142,7 +131,6 @@ class LiberoBridge(RobotBridge):
                 "steps": self.steps,
                 "reset_seconds": self.reset_seconds,
                 "control_hz": self.control_hz,
-                "observation_profile": self.profile,
                 "render_resolution": self.resolution,
                 "physics_runtime": self.physics_runtime,
                 "first_action_unix_s": self.first_action_unix_s,

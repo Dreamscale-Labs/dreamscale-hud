@@ -1,6 +1,5 @@
 import asyncio
 from contextlib import asynccontextmanager
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -19,21 +18,11 @@ from env import create_environment
 class FakePolicy:
     model = MODEL
     session_id = "test-session"
-    region = "ap-southeast-2"
     action_hz = CONTROL_HZ
     chunk_size = 10
-    transport_mode = "quic"
+    transport_mode = "test"
 
     def __init__(self, bad=False, wait=False):
-        self.resolved_optimization_config = SimpleNamespace(
-            backend="tensorrt",
-            rtc="off",
-            calibration="off",
-            tensorrt_artifact_fingerprint=(
-                "014c358f8761e5f1391c931b3f358b0eed202e6422c4eaee4ae876b83613f70a"
-            ),
-            tensorrt_artifact_id="b2405523e67019934dd81be1",
-        )
         self.calls = 0
         self.closed = 0
         self.bad = bad
@@ -259,27 +248,14 @@ async def test_cancellation_releases_inference_session():
         assert bridge._registry.all_free
 
 
-async def test_wrong_backend_closes_before_any_actions():
+async def test_wrong_timing_contract_closes_before_any_actions():
     policy = FakePolicy()
-    policy.resolved_optimization_config.backend = "pytorch"
+    policy.chunk_size = 8
 
     async def connect(**kwargs):
         return policy
 
-    with pytest.raises(ValueError, match="TensorRT"):
-        async with DreamscaleRobotAgent(connector=connect):
-            pass
-    assert policy.calls == 0 and policy.closed == 1
-
-
-async def test_unknown_artifact_is_rejected():
-    policy = FakePolicy()
-    policy.resolved_optimization_config.tensorrt_artifact_fingerprint = "different-engine"
-
-    async def connect(**kwargs):
-        return policy
-
-    with pytest.raises(ValueError, match="Unverified TensorRT"):
+    with pytest.raises(ValueError, match="timing contract"):
         async with DreamscaleRobotAgent(connector=connect):
             pass
     assert policy.calls == 0 and policy.closed == 1
@@ -397,7 +373,7 @@ async def test_cancel_during_background_connection_finishes_connector_cleanup():
 
 async def test_background_identity_failure_closes_without_sending_actions():
     policy = FakePolicy()
-    policy.resolved_optimization_config.backend = "pytorch"
+    policy.chunk_size = 8
 
     async def connect(**kwargs):
         return policy

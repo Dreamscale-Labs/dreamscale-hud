@@ -2,8 +2,7 @@
 
 The scene, cameras, observation preprocessing and scoring follow RoboLab's own
 Cosmos DROID evaluation at the pinned revision (``policies/cosmos3/run.py`` and
-``policies/cosmos3/client.py``), which is also what Dreamscale's
-``integrations/cosmos3-robolab`` client sends to the policy:
+``policies/cosmos3/client.py``):
 
 - the task is registered with ``auto_register_droid_envs(cameras=WRIST_LEFT_RIGHT_HEAD)``;
 - the two over-shoulder views and the wrist view are published as
@@ -37,7 +36,7 @@ _APP = None
 _REGISTERED: set[str] = set()
 
 #: Contract feature -> RoboLab camera term (WRIST_LEFT_RIGHT_HEAD preset). The
-#: feature names are the DROID policy slots Dreamscale maps them to.
+#: feature names are the DROID policy camera slots.
 CAMERAS = {
     "exterior_1_left": "over_shoulder_left_camera",
     "exterior_2_left": "over_shoulder_right_camera",
@@ -68,7 +67,7 @@ def _boot() -> None:
 
 
 def _register(task_name: str) -> str:
-    """Register one task exactly as RoboLab's Cosmos runner and Dreamscale's client do."""
+    """Register one task exactly as RoboLab's Cosmos runner does."""
     import robolab.constants
     from robolab.core.environments.factory import get_envs
     from robolab.registrations.droid.auto_env_registrations_jointpos import (
@@ -334,7 +333,7 @@ def make_env(
         device=os.environ.get("ROBOLAB_DEVICE", "cuda:0"),
         num_envs=1,
         use_fabric=True,
-        # Dreamscale's RoboLab runner binds create_env's seed to --scene-seed (0).
+        # RoboLab's Cosmos runner binds create_env's seed to --scene-seed (0).
         seed=int(scene_seed),
         instruction_type=instruction_type,
         policy=POLICY_LABEL,

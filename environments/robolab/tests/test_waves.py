@@ -1,11 +1,6 @@
-"""Wave runner: task expansion, credentials handling and summary aggregation."""
+"""Wave runner: argument parsing, key check and summary aggregation."""
 
 from __future__ import annotations
-
-import os
-import stat
-import tomllib
-from pathlib import Path
 
 import pytest
 
@@ -46,42 +41,27 @@ def test_parse_requires_image_and_known_tasks():
         run_waves.parse_args(["--model", "pi0", "--output", "/tmp/x", "--image", "m"])
 
 
-def test_credentials_from_env_key_use_private_temp_home(monkeypatch, capsys):
-    secret = "dsk_live_test_value_never_printed"
-    monkeypatch.delenv("DREAMSCALE_API_KEY", raising=False)
-    monkeypatch.setenv("DROPBEAR_API_KEY", secret)
-    monkeypatch.delenv("DREAMSCALE_HOME", raising=False)
-    with run_waves.dreamscale_credentials("dev") as info:
-        home = Path(os.environ["DREAMSCALE_HOME"])
-        config = home / "config.toml"
-        data = tomllib.loads(config.read_text())
-        assert data["api"]["control_plane_url"] == "https://api-dev.dreamscalelabs.com"
-        assert data["auth"]["api_key"] == secret
-        assert stat.S_IMODE(config.stat().st_mode) == 0o600
-        assert info == {
-            "source": "environment_key",
-            "control_plane_url": "https://api-dev.dreamscalelabs.com",
-        }
-        from dreamscale.config import load_config
-
-        assert load_config().control_plane_url == "https://api-dev.dreamscalelabs.com"
-    assert "DREAMSCALE_HOME" not in os.environ
-    assert not home.exists()
-    assert secret not in capsys.readouterr().out
+def test_parse_without_image_explains_how_to_build_one(monkeypatch, capsys):
+    monkeypatch.setattr(run_waves, "IMAGE", "")
+    with pytest.raises(SystemExit):
+        run_waves.parse_args(["--model", "hold", "--output", "/tmp/x"])
+    assert "build_image.py" in capsys.readouterr().err
+    args = run_waves.parse_args(["--model", "hold", "--output", "/tmp/x", "--build-image"])
+    assert args.build_image and not args.image
 
 
-def test_credentials_refuse_mismatched_login(monkeypatch, tmp_path):
+def test_require_dreamscale_key(monkeypatch, tmp_path):
     from dreamscale.config import Config, save_config
 
     monkeypatch.delenv("DREAMSCALE_API_KEY", raising=False)
-    monkeypatch.delenv("DROPBEAR_API_KEY", raising=False)
     monkeypatch.setenv("DREAMSCALE_HOME", str(tmp_path))
-    save_config(Config(api_key="k", control_plane_url="https://api.dreamscalelabs.com"))
-    with run_waves.dreamscale_credentials("prod") as info:
-        assert info["source"] == "dreamscale_login"
-    with pytest.raises(SystemExit, match="No Dreamscale key for dev"):
-        with run_waves.dreamscale_credentials("dev"):
-            pass
+    with pytest.raises(SystemExit, match="dreamscale login"):
+        run_waves.require_dreamscale_key()
+    monkeypatch.setenv("DREAMSCALE_API_KEY", "k")
+    run_waves.require_dreamscale_key()
+    monkeypatch.delenv("DREAMSCALE_API_KEY")
+    save_config(Config(api_key="k"), save_api_key=True)
+    run_waves.require_dreamscale_key()
 
 
 def _record(task, episode, *, success, score, rtt, server, boot, lifetime, error=None):

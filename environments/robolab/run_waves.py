@@ -8,13 +8,12 @@ sandbox lifetimes.
 
     uv run --project environments/robolab python environments/robolab/run_waves.py \\
         --model cosmos3-nano-policy-droid --tasks all --episodes-per-task 5 \\
-        --concurrency 10 --env prod --output runs/cosmos3-prod-wave1
+        --concurrency 10 --image modal://im-... --output runs/cosmos3-w1
 
 ``--model hold`` runs the same harness with no inference (a hold-pose smoke).
 Credentials: ``HUD_API_KEY`` (or ``hud set``), a Modal token (``modal token set``
 or ``MODAL_TOKEN_ID``/``MODAL_TOKEN_SECRET``), and for real models a Dreamscale
-key: ``DREAMSCALE_API_KEY``/``DROPBEAR_API_KEY`` in the environment, or
-``dreamscale login`` state whose control plane matches ``--env``.
+key from ``dreamscale login`` or ``DREAMSCALE_API_KEY``.
 """
 
 from __future__ import annotations
@@ -24,11 +23,9 @@ import asyncio
 import contextlib
 import json
 import os
-import shutil
 import sys
-import tempfile
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -48,13 +45,9 @@ from robolab_tasks import horizon_steps, select_tasks, task_set, task_spec  # no
 from summary import aggregate, episode_record, job_url, read_inference_rows  # noqa: E402
 
 ENV_NAME = "dreamscale-robolab"
-#: Image built from Dockerfile.hud (RoboLab ad45d4f) with ``build_image.py``.
-#: Override with --image, or pass --build-image to build Dockerfile.hud now.
-IMAGE = os.environ.get("ROBOLAB_MODAL_IMAGE", "modal://im-p0jN9zrruXkRAg7r9Uql1g")
-CONTROL_PLANES = {
-    "prod": "https://api.dreamscalelabs.com",
-    "dev": "https://api-dev.dreamscalelabs.com",
-}
+#: Your image built from Dockerfile.hud with ``build_image.py``. Pass --image,
+#: set $ROBOLAB_MODAL_IMAGE, or pass --build-image to build Dockerfile.hud now.
+IMAGE = os.environ.get("ROBOLAB_MODAL_IMAGE", "")
 # Must exceed runtime.json's startup (1800 s) and run (3600 s) limits.
 ROLLOUT_TIMEOUT_S = 7200
 SERVE_COMMAND = [
@@ -71,7 +64,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--episodes-per-task", type=int, default=1)
     parser.add_argument("--episode-offset", type=int, default=0, help="first episode index")
     parser.add_argument("--concurrency", type=int, default=1, help="max concurrent sandboxes")
-    parser.add_argument("--env", choices=sorted(CONTROL_PLANES), default="prod")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--keep-warm", type=int, default=300, help="SDK keep_warm seconds")
     parser.add_argument("--startup-timeout", type=float, default=900.0)
@@ -88,14 +80,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="oci",
         help="Modal cloud for simulator sandboxes ('' to let Modal choose); see pin_sandbox_cloud",
     )
-    parser.add_argument("--dreamscale-home", type=Path, help="use this DREAMSCALE_HOME as-is")
     parser.add_argument("--job-name", default=None)
     parser.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     args = parser.parse_args(argv)
     if args.episodes_per_task < 1 or args.concurrency < 1 or args.episode_offset < 0:
         parser.error("--episodes-per-task and --concurrency must be >= 1; offset >= 0")
     if not args.image and not args.build_image and not args.dry_run:
-        parser.error("pass --image modal://im-... (or set ROBOLAB_MODAL_IMAGE) or --build-image")
+        parser.error(
+            "no simulator image: build one once with environments/robolab/build_image.py and "
+            "pass the printed --image modal://im-... (or set ROBOLAB_MODAL_IMAGE), or pass "
+            "--build-image to build Dockerfile.hud on Modal for this run"
+        )
     try:
         args.task_names = select_tasks(args.tasks)
     except ValueError as error:
@@ -106,56 +101,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 # ── Dreamscale credentials ───────────────────────────────────────────────────
 
 
-@contextlib.contextmanager
-def dreamscale_credentials(env: str, explicit_home: Path | None = None) -> Iterator[dict[str, Any]]:
-    """Point ``dreamscale.aconnect`` at the chosen control plane without printing the key.
+def require_dreamscale_key() -> None:
+    """Fail before any sandbox starts when the SDK has no API key."""
+    from dreamscale.config import load_config
 
-    ``connect`` reads only ``$DREAMSCALE_HOME/config.toml``. A key in
-    ``DREAMSCALE_API_KEY``/``DROPBEAR_API_KEY`` is written to a private
-    temporary home (0600, removed afterwards); otherwise the existing login is
-    used when its control plane matches ``env``.
-    """
-    from dreamscale.config import Config, load_config, save_config
-
-    url = CONTROL_PLANES[env]
-    previous = os.environ.get("DREAMSCALE_HOME")
-    if explicit_home is not None:
-        os.environ["DREAMSCALE_HOME"] = str(explicit_home)
-        try:
-            config = load_config()
-            if not config.api_key:
-                raise SystemExit(f"{explicit_home}/config.toml has no API key")
-            yield {"source": "explicit_home", "control_plane_url": config.control_plane_url}
-        finally:
-            _restore_env("DREAMSCALE_HOME", previous)
-        return
-    key = os.environ.get("DREAMSCALE_API_KEY") or os.environ.get("DROPBEAR_API_KEY")
-    if key:
-        home = tempfile.mkdtemp(prefix="robolab-dreamscale-")
-        os.environ["DREAMSCALE_HOME"] = home
-        try:
-            save_config(Config(api_key=key, control_plane_url=url, preferred_region="us-west-2"))
-            yield {"source": "environment_key", "control_plane_url": url}
-        finally:
-            _restore_env("DREAMSCALE_HOME", previous)
-            shutil.rmtree(home, ignore_errors=True)
-        return
-    config = load_config()
-    if config.api_key and config.control_plane_url.rstrip("/") == url:
-        yield {"source": "dreamscale_login", "control_plane_url": url}
-        return
-    raise SystemExit(
-        f"No Dreamscale key for {env} ({url}). Export DROPBEAR_API_KEY, e.g. "
-        f"`set -a; . ~/.config/dreamscale/{'test' if env == 'prod' else 'dev'}.env; set +a`, "
-        "or `dreamscale login` against that control plane."
-    )
-
-
-def _restore_env(name: str, value: str | None) -> None:
-    if value is None:
-        os.environ.pop(name, None)
-    else:
-        os.environ[name] = value
+    if not load_config().api_key:
+        raise SystemExit("No Dreamscale API key: run `dreamscale login` or set DREAMSCALE_API_KEY.")
 
 
 # ── Modal placement with timing ──────────────────────────────────────────────
@@ -164,8 +115,8 @@ def _restore_env(name: str, value: str | None) -> None:
 def pin_sandbox_cloud(cloud: str | None) -> None:
     """Place every simulator sandbox on one Modal cloud.
 
-    Isaac Sim 5.0 needs the 580 NVIDIA driver. On 2026-10-09 Modal's AWS L40S hosts
-    ran 610.57.04 and crashed Kit at RTX startup, while OCI L40S hosts ran 580.95.05.
+    Isaac Sim 5.0 needs the 580 NVIDIA driver; some Modal L40S hosts ship a newer
+    driver that crashes Kit at RTX startup, and OCI hosts ran 580 when tested.
     ``ModalRuntime`` has no placement option, so wrap ``Sandbox.create.aio``.
     """
     if not cloud:
@@ -339,12 +290,11 @@ async def run_wave(args: argparse.Namespace) -> dict[str, Any]:
     pin_sandbox_cloud(args.sandbox_cloud)
     runtime = make_runtime(args.image, build=args.build_image)
     name = args.job_name or (
-        f"RoboLab DROID {model} [{args.env}] {len(args.task_names)} tasks x "
+        f"RoboLab DROID {model} {len(args.task_names)} tasks x "
         f"{args.episodes_per_task} ep, c={args.concurrency}"
     )
     meta: dict[str, Any] = {
         "model": model,
-        "env": args.env,
         "tasks": args.task_names,
         "horizon_steps": {t: horizon_steps(t) for t in args.task_names},
         "episodes_per_task": args.episodes_per_task,
@@ -438,11 +388,9 @@ def main(argv: list[str] | None = None) -> None:
         return
     import modal
 
-    with contextlib.ExitStack() as stack:
-        if args.model != HOLD_MODEL:
-            creds = stack.enter_context(dreamscale_credentials(args.env, args.dreamscale_home))
-            print(f"[wave] dreamscale {creds['control_plane_url']} ({creds['source']})", flush=True)
-        stack.enter_context(modal.enable_output())
+    if args.model != HOLD_MODEL:
+        require_dreamscale_key()
+    with modal.enable_output():
         summary = asyncio.run(run_wave(args))
     print_summary(summary)
     print(f"[wave] wrote {args.output / 'summary.json'}", flush=True)

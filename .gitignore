@@ -11,5 +11,5 @@ artifacts/
 .hud/
 *.egg-info/
 
-# Local RoboLab wave outputs (summaries, timing, videos); results are recorded in mvp docs
+# Local RoboLab wave outputs (summaries, timing, videos)
 runs/
