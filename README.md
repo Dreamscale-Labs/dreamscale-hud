@@ -1,351 +1,121 @@
-# HUD evaluations on Dreamscale
+# Dreamscale × HUD
 
-Run [HUD robotics evaluations](https://docs.hud.ai/v6/advanced/robots) with
-[Dreamscale](https://docs.dreamscalelabs.com)-hosted [MolmoAct2-LIBERO](https://huggingface.co/allenai/MolmoAct2-LIBERO)
-inference. HUD owns simulation, action execution, grading and video traces;
-Dreamscale owns the model server. The agent needs no local GPU or model weights.
+Run [Dreamscale](https://dreamscalelabs.com) robot policies and record every rollout on
+[HUD](https://hud.ai): instruction, joints, action chunks, camera video and a grade.
 
-The [six-episode demo](docs/demo.md) records the validated taskset, all final
-qualification attempts and version pins. The final hosted run succeeded on all
-six episodes; this is an integration result, not a benchmark-wide accuracy claim.
+## Record real YAM rollouts
 
-The package and CLI are `dreamscale-hud`, the Python module is `dreamscale_hud`,
-and the HUD environment is `dreamscale-libero`. The repository, package, CLI and
-module were previously named `hud-dreamscale`/`hud_dreamscale`, and earlier
-releases used `dropbear` names; neither has aliases, so update scripts and
-tasksets that name the old identifiers. The commands below are exact.
+This is how the blog's MolmoAct2-BimanualYAM rollouts were recorded. You need a bimanual
+YAM rig and a Linux computer wired to it.
 
-## Install
+1. **Install the CLI and sign in.**
 
-Use Python 3.12 and [uv](https://docs.astral.sh/uv/):
+   ```bash
+   uv tool install dreamscale
+   dreamscale login
+   ```
 
-```sh
-uv sync --locked
+2. **Set up the rig once** (cameras and arms, in a browser page it prints):
+
+   ```bash
+   dreamscale robots yam setup
+   dreamscale doctor yam
+   ```
+
+3. **Connect HUD once** (installs HUD support and saves your HUD API key):
+
+   ```bash
+   dreamscale integrations hud setup
+   ```
+
+4. **Run with `--hud`:**
+
+   ```bash
+   dreamscale run yam --model molmoact2-bimanual-yam --hud --hud-job "MolmoAct2-BimanualYAM"
+   ```
+
+   Type an instruction, watch the preview, press Enter to execute. When the task stops,
+   the arms hold while you grade it: `y`, `n` or a 0–1 score, plus an optional note
+   (`n dropped the towel`). Repeat for more tasks; Ctrl+C ends the session.
+
+5. **See it on HUD.** The session is one job on [hud.ai](https://hud.ai); each task is a
+   trace with one video per camera, and its grade is the reward.
+
+6. **Download the videos** (optional). From a clone of this repo:
+
+   ```bash
+   uv sync
+   uv run python -m dreamscale_hud.trace_videos https://hud.ai/jobs/JOB_ID --output videos
+   ```
+
+   You get one MP4 per camera, a side-by-side mosaic per trace, and `traces.json` with
+   each task's reward and grade.
+
+`dreamscale run so101 --hud` works the same way on an SO-101 arm.
+
+## Simulated benchmarks
+
+Here HUD runs the simulator and this repo's agent calls Dreamscale for actions.
+Install with Python 3.12 and [uv](https://docs.astral.sh/uv/), then sign in to both:
+
+```bash
+uv sync
+uv run dreamscale login
+uv run hud login
 ```
 
-Create a Dreamscale API key at [app.dreamscalelabs.com](https://app.dreamscalelabs.com),
-then sign in with `uv run dreamscale login` (the CLI of the pinned SDK 0.1.0a31) and
-configure HUD with `uv run hud login`. Existing SDK credentials are reused. Keep
-credentials outside the repository. Dreamscale usage and HUD-hosted simulation
-incur their respective service charges.
+### LIBERO (MolmoAct2-LIBERO)
 
-The agent lock explicitly overrides NumPy to 2.2.6: OpenPI 0.1.2 declares NumPy
-<2, while the Dreamscale SDK requires NumPy 2. We test the array codec and HUD
-protocol under this override. Ordinary `pip install` is not currently supported by those
-upstream dependency constraints. No global Python environment is changed.
-
-## Local simulation
-
-```sh
+```bash
 docker build -f Dockerfile.hud -t dreamscale-hud-libero:local .
-docker run --rm dreamscale-hud-libero:local python -m environments.libero.preflight
-uv run dreamscale-hud --runtime docker --task-ids 0 --init-state-ids 0
+uv run dreamscale-hud --task-ids 0 --init-state-ids 0
 ```
 
-The container runs CPU MuJoCo physics and OSMesa rendering. Its separately
-locked dependencies include CPU PyTorch only for LIBERO's initial-state loading;
-no policy weights are installed there. Assets are pinned and downloaded during
-the build, so episode startup does not download them.
+That runs one episode in a local CPU simulator and records it on HUD. Omit the two
+options for six episodes; `--suite`, `--all-suites` and `--taskset tasksets/five-suites.json`
+select other LIBERO tasks. Results, timings and per-camera MP4s go to `artifacts/<time>/`.
 
-Build and run the local simulator for the host's native CPU architecture. In
-particular, do not run the Intel (`linux/amd64`) deployment image under Rosetta
-on Apple Silicon. We reproduced incorrect MuJoCo contacts there: LIBERO objects
-fell through the table before the first model action. Identical pinned scenes
-and initial states remained supported on native ARM with MuJoCo 3.3.7. Each
-simulator process now checks a falling box's resting height before loading a
-task and rejects invalid physics. The grade records the checked runtime and
-architecture. Run this inexpensive check independently with:
+To run the simulator on HUD instead of Docker, deploy it to your HUD workspace once:
 
-```sh
-docker run --rm dreamscale-hud-libero:local python -m environments.libero.physics
-```
-
-The corrected image has passed native Linux/amd64 CPU/OSMesa preflight and all
-30 integration tests, including HUD's actual robot protocol and grading loop.
-A model-free replay reproduced a successful 79-action trajectory from the native
-Mac simulator, with maximum state difference `1.49e-8`. This validates simulator
-behavior; new model artifacts still require their own closed-loop evaluations.
-
-The full preflight above also checks rendering and the robot protocol; a camera
-image alone is insufficient evidence that simulation physics is valid.
-
-To run all six episodes, omit the task-selection options. For an already-served
-HUD environment use `--runtime attached --env-url tcp://127.0.0.1:8765`.
-
-On Apple Silicon, native macOS simulation is an alternative while validating a
-native container. It uses CGL rendering, so it does not satisfy the CPU/OSMesa
-container check. From the repository root, prepare the isolated simulator once:
-
-```sh
-uv sync --project environments/libero --locked --no-dev
-export PYTHONPATH="$PWD/src:$PWD"
-export LIBERO_ASSETS_PATH="$PWD/artifacts/libero-assets"
-export LIBERO_CONFIG_PATH="$PWD/artifacts/libero-config"
-export LIBERO_ASSETS_REVISION=0b3ea86be5fe169d0fd036ae63d1070ec09e90f6
-export MUJOCO_GL=cgl
-uv run --project environments/libero python -m environments.libero.bootstrap
-uv run --project environments/libero hud serve env.py --host 127.0.0.1 --port 8765
-```
-
-Keep that server running and use `uv run dreamscale-hud --runtime attached
---env-url tcp://127.0.0.1:8765` in another terminal. The server and runner default
-to 20 Hz. This remains local simulation with HUD traces, not HUD-hosted execution.
-
-The environment exposes all five executable suites in the pinned LIBERO package:
-`libero_spatial`, `libero_object`, `libero_goal`, `libero_10` and `libero_90`.
-Task-order 0 names are checked against `task_manifest.json` before each episode.
-Use `--suite libero_90 --task-ids 89` for a particular task; `--all-suites` applies
-the selected task and initial-state IDs to each suite while reusing one inference
-connection. For example, one episode per suite:
-
-```sh
-uv run dreamscale-hud --runtime hud --all-suites --task-ids 0 --init-state-ids 0
-```
-
-To choose a different task in each suite, use the portable HUD taskset:
-
-```sh
-uv run dreamscale-hud --runtime hud --taskset tasksets/five-suites.json
-```
-
-It selects task 0 in the first four suites and task 50 (alphabet soup into basket) in
-`libero_90`, all at initial state 0. The taskset loader checks numeric IDs,
-task names, seed and action limit, and records the file's checksum. These cases
-each succeeded in the hosted campaign across two jobs. The earlier LIBERO-90
-task-0 drawer failure and task-9 bowl-placement failures at initial states 0 and 1
-remain in the report; changing the example selection does not remove attempts.
-
-The all-suite acceptance result requires at least one simulator-graded success
-in each suite, no integration errors, verified HUD traces, hosted simulation,
-and the documented full episode limit/cadence. Every attempted episode is saved.
-Additional attempts can be selected explicitly; do not hide failures when
-combining run reports. This demonstrates integration coverage, not benchmark-wide
-accuracy or unseen-task generalization.
-
-The runner starts inference and simulator provisioning concurrently, then waits
-for verified model identity before submitting any observations. One simulator
-lease and one inference connection remain open for the sequential job; each
-episode resets the simulator, robot claim and action queue. Both resources close
-when the job exits, including on failure or cancellation. This avoids repeating
-container/model startup for every episode. The retained resources remain billable.
-The HUD lease is created outside individual trace scopes so completing one trace
-does not complete the shared environment's lifetime.
-
-## HUD-hosted simulation
-
-After local validation:
-
-```sh
+```bash
 uv run hud deploy . --no-env --runtime hud
 uv run dreamscale-hud --runtime hud
 ```
 
-This uses [`HUDRuntime`](https://docs.hud.ai/v6/reference/runtime): the CPU
-environment runs on HUD, while the agent client runs on your machine and talks
-to Dreamscale. The default inference region is Oregon (`us-west-2`);
-`--region ap-southeast-2` selects Sydney. One connection is retained across the
-sequential episodes and closed at the end. Retaining it is billable; `keep_warm`
-is zero after close.
+Build the image for your machine's own CPU architecture: LIBERO's physics is wrong under
+x86 emulation on Apple Silicon, and the simulator refuses to start when it detects that.
 
-Results go to a new directory under `artifacts/` (or `--output <new-directory>`):
+### RoboLab, RoboTwin, RoboDojo
 
-- `results.json`: every HUD trace ID, task selection, score, errors, serving
-  identity, job link and startup measurements.
-- `timings.jsonl`: per-episode startup and per-inference timing joined by task,
-  trace, session and observation IDs.
-- `traces/`: complete local HUD spans, including encoded camera video segments.
-- `videos/`: playable MP4 files for each trace and camera, assembled from those
-  local segments without changing their frames.
+Isaac Lab and Sapien simulators that run in Modal GPU sandboxes through HUD. RoboLab
+runs Dreamscale's DROID policies; see [environments/robolab](environments/robolab/README.md).
+RoboTwin and RoboDojo ship a hold-pose agent:
 
-With HUD credentials, HUD records camera videos, state and action chunks. The
-runner checks the completed platform grades and both camera streams after
-closing inference. Timing sidecars contain no camera payloads or credentials;
-the separate local trace files contain the video. CLI startup timing
-begins at entry to the Python CLI module; first-action timing ends when the
-simulator acknowledges the action with its next observation. Simulator-side
-Unix timestamps are recorded separately and never subtracted from local clocks.
+```bash
+uv run python environments/robotwin/run_modal.py
+uv run python environments/robodojo/run_modal.py
+```
 
-## Evaluation contract
+Each needs your Modal token and HUD key in `environments/<env>/.env` (see `.env.example`).
 
-The default taskset contains `libero_spatial` task-order 0, task IDs 0, 1 and 2,
-with initial-state IDs 0 and 1. Names are checked against the pinned package:
-pick up the black bowl between the plate and ramekin, next to the ramekin, and
-at table center, placing it on the plate.
-
-The environment uses 20 Hz actual control, ten settling steps, ten-action
-chunks and a 600-action limit. State is EEF XYZ, axis-angle radians and two
-gripper positions. Actions use LIBERO's native seven-value delta-EEF control.
-The environment publishes upright 256×256 RGB agent/wrist cameras, so HUD traces
-show the scene upright. The adapter restores the raw render buffer that Dreamscale's
-LIBERO API expects; Dreamscale then performs its rotation, resize and encoding once.
-RTC and calibration are off because HUD drives a synchronous chunk loop.
-
-The initial integration used the SDK simulation profile's 10 Hz setting. It now
-explicitly requests 20 Hz from the simulator and SDK, matching the default
-controller in the [reference LIBERO environment](https://github.com/Lifelong-Robot-Learning/LIBERO/blob/master/libero/libero/envs/env_wrapper.py).
-This changes simulated dynamics, not just playback speed. In a recorded-action
-replay, 20 Hz reproduced a successful rollout exactly; the same actions at 10 Hz
-failed, with up to 20.6 cm end-effector trajectory divergence. The six-case
-hosted-demo protocol is therefore amended to 20 Hz; earlier 10 Hz attempts retain
-their original provenance and results.
-
-For a diagnostic comparison, `--runtime docker --control-hz 10` configures both
-sides to the old rate. An attached environment must be started with the same
-`LIBERO_CONTROL_HZ` value as the runner; mismatches fail before inference. The
-selected rate is recorded in simulator grades and provider metadata. A 10 Hz
-comparison does not pass the corrected hosted-demo gate. Rebuild and redeploy
-older environment images before using the new default.
-
-The demo passes when the six HUD-hosted episodes have no integration errors and
-at least one simulator-confirmed success. Every attempt is retained. A lower
-`--max-steps` value is a smoke test and cannot pass demo acceptance. These settings
-test integration, not reproduction of the checkpoint's published benchmark score.
-
-Startup below two to three minutes is a target, not a pass/fail threshold. Warm
-repeats reuse the inference session; they do not prove parked-session reclaim.
-
-## Use the provider in Python
+## Use the agent in Python
 
 ```python
 from hud import HUDRuntime, Taskset
 from dreamscale_hud import DreamscaleRobotAgent
 from dreamscale_hud.cli import tasks
 
-
-async def evaluate():
-    async with DreamscaleRobotAgent() as agent:
-        return await Taskset("libero-demo", tasks()).run(
-            agent,
-            runtime=HUDRuntime(),
-            max_concurrent=1,
-        )
+async with DreamscaleRobotAgent() as agent:
+    job = await Taskset("libero", tasks()).run(agent, runtime=HUDRuntime(), max_concurrent=1)
 ```
 
-The provider reuses HUD's `RobotAgent` loop and overrides native async inference.
-It does not support `BatchedModel`, concurrent episodes, arbitrary checkpoints,
-or DreamZero's stateful episode lifecycle. Unknown model artifacts and mismatched
-camera/state/action contracts fail before actions are sent. The small
-`serving_contracts.json` registry ties verified TensorRT artifact fingerprints to
-checkpoint revisions; verify new build manifests before adding entries.
+## Development
 
-On a cold start, the SDK can retain planned artifact metadata without a
-fingerprint. The provider then reads the session's exact target through the
-SDK control client and accepts its reported artifact only when there is exactly
-one ready TensorRT worker and one active session. The sidecar records both the
-session's advertised artifact ID and the verified running artifact. Multiple
-workers or sessions make this fallback ambiguous and are rejected.
-
-## RoboTwin, RoboLab, and RoboDojo
-
-`environments/robotwin`, `environments/robolab`, and `environments/robodojo` are
-separate simulators. They are not part of the MolmoAct2 LIBERO runner above.
-LIBERO stays the repository-root `env.py`. Each other directory has its own
-`Dockerfile.hud` and is served with `hud serve env.py` from that directory.
-The agent in each run script is a hold policy. Replace that model to plug in
-the Dreamscale SDK. RoboLab already has one: `environments/robolab/run_waves.py`
-runs its DROID tasks with Dreamscale's Cosmos / FLUX DROID policies as a HUD
-wave; see `environments/robolab/README.md`.
-
-What runs where:
-
-- **LIBERO, deployed HUD env.** `uv run dreamscale-hud --runtime hud`. The
-  Dreamscale agent stays on this machine. The simulator is the deployed
-  `dreamscale-libero` env.
-- **RoboTwin, Modal.** `uv run python environments/robotwin/run_modal.py`.
-  The simulator is the deployed L4 image. The agent stays on this machine.
-  `HUDRuntime` cannot lease Modal builds (env sessions accept EC2 only), so
-  this uses `ModalRuntime` and a Modal token in `environments/robotwin/.env`
-  (`MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`) or in the constants at the top of
-  the script. `HUD_API_KEY` in the same file records the trace on hud.ai.
-  Redeploy with:
-
-```sh
-uv run hud deploy environments/robotwin --no-env --runtime modal \
-  --runtime-config environments/robotwin/runtime.json
-```
-
-- **RoboLab and RoboDojo, Modal.** Same shape as RoboTwin: the simulator is a
-  Modal GPU sandbox, the hold agent stays on this machine, and `ModalRuntime`
-  tunnels the control channel. Isaac Lab renders through Vulkan, which Modal's
-  gVisor now supports.
-
-```sh
-uv run python environments/robolab/run_modal.py
-uv run python environments/robodojo/run_modal.py
-```
-
-  Credentials are the same as RoboTwin (`environments/<env>/.env`, or the
-  constants at the top of each script). A blank `IMAGE` builds `Dockerfile.hud`
-  on first launch. Redeploy either image with:
-
-```sh
-uv run hud deploy environments/robolab --no-env --runtime modal \
-  --runtime-config environments/robolab/runtime.json
-uv run hud deploy environments/robodojo --no-env --runtime modal \
-  --runtime-config environments/robodojo/runtime.json
-```
-
-- **RoboLab and RoboDojo, local GPU.** Both scripts use `LocalRuntime` and
-  `cuda:0` on this machine:
-
-```sh
-OMNI_KIT_ACCEPT_EULA=Y python environments/robolab/run.py
-ROBODOJO_ROOT=/path/to/RoboDojo OMNI_KIT_ACCEPT_EULA=YES python environments/robodojo/run.py
-```
-
-RoboDojo needs a checkout whose `Assets/` directory is populated. The Modal
-image downloads those assets while it builds. Its HUD action is dual-arm joint
-position. End-effector planning needs the cuRobo submodule; without it the
-simulator still steps joint targets. RoboTwin renders with Sapien. RoboLab and
-RoboDojo render with Isaac Lab. `environments/robotwin/runtime.json` is 8 CPUs,
-32768 MiB, and one L4. The Isaac images use one L40S and 49152 MiB, because Kit
-needs the extra memory while it compiles shaders.
-
-## Real robots: bimanual YAM
-
-Real-robot rollouts are recorded from the Dreamscale CLI itself, with no HUD
-environment, container or runtime. On the robot computer, connect HUD once (it
-installs HUD support and the `hud` CLI, opens the API key page and saves your
-key), then add `--hud` to a run; `--hud-job` optionally names the job:
-
-```sh
-uv tool install dreamscale
-dreamscale integrations hud setup
-dreamscale run yam --model molmoact2-bimanual-yam --hud --hud-job "MolmoAct2-BimanualYAM"
-```
-
-Dreamscale keeps driving the arms; HUD only records. Each session is one HUD job
-and each executed task one trace with the instruction, measured and commanded
-joints, the model's action chunks and one video per camera (top, left, right).
-After each task the operator grades the held final pose (`y`, `n` or a 0–1
-score plus an optional note), and the grade is the trace's reward. Requires
-[`dreamscale`](https://pypi.org/project/dreamscale/) 0.1.0a77 or later; its
-YAM guide (`dreamscale/guides/yam.md` in the package) covers rig setup.
-
-To download a job's videos as MP4s, with a side-by-side mosaic per trace and
-a `traces.json` of tasks, rewards and grades:
-
-```sh
-uv run python -m dreamscale_hud.trace_videos https://hud.ai/jobs/JOB_ID --output videos
-```
-
-## Verify
-
-For independent concurrent simulators sharing HTTP inference, see the additive
-[pooled integration](docs/pooled-inference.md). The scalar CLI and environment
-above retain their existing behavior; pooled serving uses a separate raw360
-environment and the `PooledProvider`/`PooledRobotAgent`/`RuntimePool` interfaces.
-
-```sh
+```bash
 uv run ruff check .
 uv run pytest -q
-DREAMSCALE_HUD_IMAGE=dreamscale-hud-libero:local uv run pytest -q tests/test_container.py
 ```
 
-Tests exercise the real HUD robot socket, claim/grade/release lifecycle, input
-conversion, episode reuse and failure/cancellation cleanup with a fake policy.
-They do not count as real-model evaluation. Live acceptance evidence is tracked
-separately; no score or startup result is claimed before a completed run.
-
-Integration code is MIT licensed. Dependencies, model checkpoints and simulator
-assets retain their respective upstream licenses. See [upstream materials](THIRD_PARTY.md).
+Dreamscale usage and HUD/Modal simulation are billed by their providers. Integration
+code is MIT licensed; dependencies, checkpoints and simulator assets keep their own
+licenses ([THIRD_PARTY.md](THIRD_PARTY.md)).

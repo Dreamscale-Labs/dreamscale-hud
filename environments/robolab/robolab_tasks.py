@@ -1,7 +1,7 @@
 """The fixed RoboLab DROID task set and per-task horizons (no simulator imports).
 
-``tasks.json`` is the ten-task screen from Dreamscale's Cosmos qualification
-(``mvp/infra/benchmarks/cosmos3_tasks.json``). ``episode_s`` is RoboLab's own
+``tasks.json`` is a ten-task screen across RoboLab's difficulty labels.
+``episode_s`` is RoboLab's own
 ``episode_length_s`` for each task class at the pinned revision, so the sim
 truncates there by itself; the agent's step cap only adds a small margin.
 """

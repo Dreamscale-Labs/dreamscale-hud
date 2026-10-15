@@ -1,5 +1,5 @@
 {
-  "source": "Dreamscale mvp/infra/benchmarks/cosmos3_tasks.json (schema 1); episode_s is RoboLab's own per-task episode length",
+  "source": "Ten-task RoboLab DROID screen; episode_s is RoboLab's own per-task episode length",
   "robolab_revision": "ad45d4f974725d020f82c2b0d77d78533aeba2b3",
   "instruction_type": "default",
   "scene_seed": 0,

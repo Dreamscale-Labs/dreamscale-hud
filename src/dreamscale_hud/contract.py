@@ -7,35 +7,7 @@ from importlib.resources import files
 import numpy as np
 
 MODEL = "molmoact2-libero"
-CHECKPOINT = "allenai/MolmoAct2-LIBERO"
-REVISION = "0d24a92bd1faf321ef497c3bbd5681af97c65aa2"
 ENV_NAME = "dreamscale-libero"
-LEGACY_PROFILE = "libero-legacy-v1"
-POOLED_PROFILE = "libero-raw360-v1"
-POOLED_ENV_NAME = "dreamscale-libero-pooled"
-POOLED_RESOLUTION = 360
-PI05_PROFILE = "libero-raw256-v1"
-PI05_ENV_NAME = "dreamscale-libero-pooled-pi05"
-POOLED_MODELS = {
-    "molmoact2-libero": {
-        "profile": POOLED_PROFILE,
-        "resolution": 360,
-        "action_steps": 10,
-        "env": POOLED_ENV_NAME,
-        "precision": "bf16_swiglu_fp32",
-        "prefill_batch": 2,
-        "action_batch": 4,
-    },
-    "pi0.5-libero": {
-        "profile": PI05_PROFILE,
-        "resolution": 256,
-        "action_steps": 5,
-        "env": PI05_ENV_NAME,
-        "precision": "openpi_reference_bf16",
-        "prefill_batch": 1,
-        "action_batch": 1,
-    },
-}
 # LIBERO reference controller cadence. This is simulation time per action,
 # independent of network latency and the published SDK sim profile's default.
 CONTROL_HZ = 20
@@ -65,15 +37,10 @@ TASK_NAMES = TASK_SUITES["libero_spatial"]
 GOAL_TASK_NAMES = TASK_SUITES["libero_goal"]
 
 
-def build_contract(control_hz=CONTROL_HZ, *, profile=LEGACY_PROFILE):
+def build_contract(control_hz=CONTROL_HZ):
     if control_hz not in (10, 20):
         raise ValueError("Supported LIBERO control rates are 10 and 20 Hz")
-    if profile not in (LEGACY_PROFILE, POOLED_PROFILE, PI05_PROFILE):
-        raise ValueError("Unsupported LIBERO observation profile")
-    if profile in (POOLED_PROFILE, PI05_PROFILE) and control_hz != CONTROL_HZ:
-        raise ValueError("The pooled LIBERO profile requires 20 Hz control")
-    resolution = POOLED_RESOLUTION if profile == POOLED_PROFILE else 256
-    contract = {
+    return {
         "robot_type": "libero_franka",
         "control_rate": control_hz,
         "features": {
@@ -82,7 +49,7 @@ def build_contract(control_hz=CONTROL_HZ, *, profile=LEGACY_PROFILE):
                     "role": "observation",
                     "type": "rgb",
                     "dtype": "uint8",
-                    "shape": [resolution, resolution, 3],
+                    "shape": [256, 256, 3],
                     "orientation": "upright",
                     "camera_role": role,
                 }
@@ -107,34 +74,6 @@ def build_contract(control_hz=CONTROL_HZ, *, profile=LEGACY_PROFILE):
                 "gripper_convention": "libero_native",
             },
         },
-    }
-    if profile in (POOLED_PROFILE, PI05_PROFILE):
-        contract["observation_profile"] = profile
-        del contract["features"]["state"]
-        for key, shape, metadata in (
-            ("robot0_eef_pos", [3], {"position_unit": "meters"}),
-            ("robot0_eef_quat_xyzw", [4], {"rotation": "quaternion_xyzw"}),
-            ("robot0_gripper_qpos", [2], {}),
-        ):
-            contract["features"][key] = {
-                "role": "observation",
-                "type": "state",
-                "dtype": "float32",
-                "shape": shape,
-                **metadata,
-            }
-    return contract
-
-
-def pooled_state_from_raw(obs):
-    """Keep raw geometry; the pooled inference server owns axis-angle conversion."""
-    quat = finite_array(obs["robot0_eef_quat"], (4,), "EEF quaternion")
-    if not np.isclose(np.linalg.norm(quat), 1.0, atol=1e-3):
-        raise ValueError("EEF quaternion must be normalized")
-    return {
-        "robot0_eef_pos": finite_array(obs["robot0_eef_pos"], (3,), "EEF position"),
-        "robot0_eef_quat_xyzw": quat,
-        "robot0_gripper_qpos": finite_array(obs["robot0_gripper_qpos"], (2,), "gripper positions"),
     }
 
 

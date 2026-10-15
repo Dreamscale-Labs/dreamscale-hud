@@ -6,13 +6,7 @@ from hud.capabilities.robot import _packb, _unpackb
 from PIL import Image
 
 from dreamscale_hud.adapter import LiberoAdapter
-from dreamscale_hud.contract import (
-    CAMERAS,
-    POOLED_PROFILE,
-    build_contract,
-    pooled_state_from_raw,
-    state_from_raw,
-)
+from dreamscale_hud.contract import CAMERAS, build_contract, state_from_raw
 
 
 def observation():
@@ -88,30 +82,7 @@ def test_quaternion_convention_and_units():
         state_from_raw(obs)
 
 
-def test_pooled_profile_keeps_raw_quaternion_and_scalar_profile_unchanged():
-    raw = {
-        "robot0_eef_pos": [0.1, 0.2, 0.3],
-        "robot0_eef_quat": [0, 0, 1, 0],
-        "robot0_gripper_qpos": [0.01, -0.01],
-    }
-    pooled = pooled_state_from_raw(raw)
-    np.testing.assert_array_equal(pooled["robot0_eef_quat_xyzw"], [0, 0, 1, 0])
-    assert "state" not in pooled and all(v.dtype == np.float32 for v in pooled.values())
-    scalar = build_contract()
-    contract = build_contract(profile=POOLED_PROFILE)
-    assert scalar["features"][CAMERAS[0]]["shape"] == [256, 256, 3]
-    assert contract["features"][CAMERAS[0]]["shape"] == [360, 360, 3]
-    assert "state" in scalar["features"] and "state" not in contract["features"]
-    assert contract["features"]["action"] == scalar["features"]["action"]
-    with pytest.raises(ValueError, match="20 Hz"):
-        build_contract(10, profile=POOLED_PROFILE)
-    with pytest.raises(ValueError, match="Unsupported"):
-        build_contract(profile="unknown")
-
-
-@pytest.mark.parametrize("quat", [[0, 0, 0, 0], [0, 0, 0, 2], [0, 0, 0, np.nan]])
-def test_pooled_profile_rejects_invalid_geometry(quat):
-    with pytest.raises(ValueError):
-        pooled_state_from_raw(
-            {"robot0_eef_pos": [0] * 3, "robot0_eef_quat": quat, "robot0_gripper_qpos": [0] * 2}
-        )
+def test_contract_rejects_unsupported_rates():
+    assert build_contract()["features"][CAMERAS[0]]["shape"] == [256, 256, 3]
+    with pytest.raises(ValueError, match="10 and 20 Hz"):
+        build_contract(15)

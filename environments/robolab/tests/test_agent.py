@@ -22,7 +22,7 @@ def hud_obs(*, gripper: float = 0.3, terminated: bool = False, h: int = 36, w: i
     return {"data": data, "terminated": terminated}
 
 
-def test_split_observation_matches_dreamscale_robolab_client():
+def test_split_observation_matches_robolab_cosmos3_client():
     inputs = da.split_observation(hud_obs(gripper=1.0000001)["data"])
     assert inputs["exterior_frame"][0, 0, 0] == 10  # over-shoulder left
     assert inputs["second_exterior_frame"][0, 0, 0] == 20  # over-shoulder right
@@ -85,12 +85,12 @@ class FakeSDKPolicy:
     def __init__(self, actions=None):
         self.model = "cosmos3-nano-policy-droid"
         self.session_id = "sess-1"
-        self.region = "us-west-2"
+        self.region = "nearest"
         self.transport_mode = "quic"
         self.fallback_reason = None
         self.action_hz = 15
         self.chunk_size = 32
-        self.resolved_optimization_config = SimpleNamespace(backend="pytorch", rtc="off")
+        self.resolved_optimization_config = SimpleNamespace(backend="default", rtc="off")
         self.requests = []
         self.closed = 0
         self._actions = actions
@@ -129,15 +129,12 @@ async def test_dreamscale_policy_opens_reference_session_shape():
     session = await factory.open(label="BananaInBowlTask ep0")
     model, kwargs = calls[0]
     assert model == "flux-3-action-droid"
-    assert {k: kwargs[k] for k in ("acceleration", "rtc", "calibration", "region")} == {
-        "acceleration": "pytorch",
-        "rtc": "off",
-        "calibration": "off",
-        "region": "us-west-2",
-    }
+    assert {k: kwargs[k] for k in ("rtc", "calibration")} == {"rtc": "off", "calibration": "off"}
+    # Acceleration and region are left to the SDK defaults.
+    assert "acceleration" not in kwargs and "region" not in kwargs
     assert kwargs["control_hz"] == 15 and kwargs["keep_warm"] == 600
     assert callable(kwargs["on_progress"])
-    assert session.info["session_id"] == "sess-1" and session.info["backend"] == "pytorch"
+    assert session.info["session_id"] == "sess-1" and session.info["backend"] == "default"
 
     reply = await session.predict(hud_obs()["data"], "Pick up the banana")
     observation, instruction, timeout_s = sdk.requests[0]
@@ -332,18 +329,18 @@ async def test_agent_respects_step_cap_and_closes_on_error(tmp_path, patched_io)
             session = await super().open(label=label)
 
             async def boom(data, instruction):
-                raise RuntimeError("worker lost")
+                raise RuntimeError("connection lost")
 
             session.predict = boom
             return session
 
     failing = Exploding(events)
     agent = da.RobolabDreamscaleAgent(failing, output_dir=tmp_path / "b", local_video=False)
-    with pytest.raises(RuntimeError, match="worker lost"):
+    with pytest.raises(RuntimeError, match="connection lost"):
         await agent(fake_run())
     assert failing.sdk.closed == 1
     summary = json.loads(next((tmp_path / "b" / "episodes").glob("*/episode.json")).read_text())
-    assert "worker lost" in summary["error"]
+    assert "connection lost" in summary["error"]
 
 
 async def test_hold_policy_needs_no_sdk(tmp_path, patched_io):

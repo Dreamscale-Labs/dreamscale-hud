@@ -474,12 +474,13 @@ wheels = [
 
 [[package]]
 name = "dreamscale"
-version = "0.1.0a31"
+version = "0.1.0a105"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
-    { name = "dropbear-transport" },
+    { name = "dreamscale-transport" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "numpy" },
     { name = "pillow" },
     { name = "rich" },
@@ -487,14 +488,45 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/f9/444dfebe07a59bfcd1b5faf1b8530be648636fd2fe280f451e1c12f890ea/dreamscale-0.1.0a31.tar.gz", hash = "sha256:4bacd714b722e8a9bbfb4698407f7189dc3bd654c36c07bdef2f1a18012766a9", size = 245429, upload-time = "2026-09-27T22:58:01.152Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/5c/0b591758c8f75039053725e11af11f24c81e64d1a1941c611d98d0c992be/dreamscale-0.1.0a105.tar.gz", hash = "sha256:87ea45b0af468f783679d54b8cdefc2e2dc0e53de4eeb45ef58db3a783a92bc1", size = 461861, upload-time = "2026-10-14T23:47:12.54Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bb/9f/542b12defd85ee08db7a8d8c620b47b7645f2c2e58622392d8ef5e4a0666/dreamscale-0.1.0a31-py3-none-any.whl", hash = "sha256:a288b946badf985655ca0cb234177db6df398400c09e8fe3e6cdc32d90c70cb8", size = 274997, upload-time = "2026-09-27T22:57:59.626Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/f8/6c2b9550ead0618e54552d9016f9672af2c2c92f3304b52386af7d9023fe/dreamscale-0.1.0a105-py3-none-any.whl", hash = "sha256:32cd93f2ef4e754be3f6b78aca24ee07f3f07a4a9aff5435d1269423fff33b34", size = 485883, upload-time = "2026-10-14T23:47:11.037Z" },
 ]
 
 [[package]]
-name = "dropbear-transport"
-version = "0.1.1a13"
+name = "dreamscale-hud"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "dreamscale" },
+    { name = "hud", extra = ["modal", "robot"] },
+    { name = "numpy" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dreamscale", specifier = "==0.1.0a105" },
+    { name = "hud", extras = ["robot", "modal"], git = "https://github.com/hud-evals/hud-python?rev=0b63b4d3b9acb6d095e0886e18b2c905219e1e5a" },
+    { name = "numpy", specifier = "==2.2.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.3,<9" },
+    { name = "pytest-asyncio", specifier = ">=1,<2" },
+    { name = "ruff", specifier = ">=0.12" },
+]
+
+[[package]]
+name = "dreamscale-transport"
+version = "0.1.1a37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioquic" },
@@ -504,9 +536,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/4b/6c866cabedb59804b2921c85e54fbc7c6f7dad64545287ddb39260233c2d/dropbear_transport-0.1.1a13.tar.gz", hash = "sha256:01c89ba36ad457d28a832e9231d8978268918da65f881ca5d87108f1c8909e08", size = 43318, upload-time = "2026-09-27T20:58:42.589Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/95/3042f9fbda4cbafba685d93f6cc0a5304a1e492c150e041eaeba5f97aa6a/dreamscale_transport-0.1.1a37.tar.gz", hash = "sha256:40b735f01cb9f5e98dd485a5df474bbe5babc3b0b0db2d660eae6e72d3688ac6", size = 75614, upload-time = "2026-10-14T22:55:05.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/85/f982572c34a2f5668c293c9702978debb2d88f260ea851b0447a828cbc39/dropbear_transport-0.1.1a13-py3-none-any.whl", hash = "sha256:3dd98027d9f3b8c57fda2df3b412618afb3c596230fd775994b2aab8ab176d61", size = 51501, upload-time = "2026-09-27T20:58:41.584Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/85/2ef18337482b51b5eeee66c8b7aef38004fad18e2284a664d59ee0be3a20/dreamscale_transport-0.1.1a37-py3-none-any.whl", hash = "sha256:907f99217c190896f13fa2a47e3ebb667b41892354d28d35edef650c0fa1691d", size = 92941, upload-time = "2026-10-14T22:55:04.474Z" },
 ]
 
 [[package]]
@@ -809,37 +841,6 @@ robot = [
     { name = "gymnasium" },
     { name = "numpy" },
     { name = "openpi-client" },
-]
-
-[[package]]
-name = "dreamscale-hud"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "dreamscale" },
-    { name = "hud", extra = ["modal", "robot"] },
-    { name = "numpy" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "dreamscale", specifier = "==0.1.0a31" },
-    { name = "hud", extras = ["robot", "modal"], git = "https://github.com/hud-evals/hud-python?rev=0b63b4d3b9acb6d095e0886e18b2c905219e1e5a" },
-    { name = "numpy", specifier = "==2.2.6" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.3,<9" },
-    { name = "pytest-asyncio", specifier = ">=1,<2" },
-    { name = "ruff", specifier = ">=0.12" },
 ]
 
 [[package]]

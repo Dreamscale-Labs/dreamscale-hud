@@ -6,7 +6,7 @@ episode ends, its tile holds the last frame; successful episodes get a green tin
 and a check mark at the step RoboLab scored success.
 
     uv run --project environments/robolab python environments/robolab/make_mosaic.py \
-        runs/flux3-prod-w1 runs/flux3-prod-w2 --output runs/flux3-mosaic.mp4
+        runs/flux3-w1 runs/flux3-w2 --output runs/flux3-mosaic.mp4
 """
 
 from __future__ import annotations

@@ -1,22 +1,20 @@
 """RoboLab DROID agent: one Dreamscale session per episode, 32-action open-loop chunks.
 
-Mirrors Dreamscale's ``integrations/cosmos3-robolab/dreamscale_client.py`` (the
-RoboLab ``Cosmos3Client`` with its websocket replaced by an SDK session):
+Follows RoboLab's ``Cosmos3Client`` with its websocket replaced by an SDK session:
 
-- one ``dreamscale.aconnect(model, acceleration="pytorch", rtc="off",
-  calibration="off", region="us-west-2", control_hz=15, keep_warm=...)``
-  session per episode, closed when the episode ends;
+- one ``dreamscale.aconnect(model, rtc="off", calibration="off", control_hz=15,
+  keep_warm=...)`` session per episode, closed when the episode ends;
 - each request is ``dreamscale.franka.observe(left, right, wrist, joints,
   gripper)`` plus the RoboLab instruction; the reply must be a finite 32x8
   absolute joint-position chunk;
-- the gripper column is thresholded at 0.5 (``Cosmos3Client._postprocess_chunk``;
-  the server applies the same transform) and all 32 actions execute
+- the gripper column is thresholded at 0.5 (``Cosmos3Client._postprocess_chunk``)
+  and all 32 actions execute
   open-loop at the sim's 15 Hz before the next request.
 
 The HUD bridge steps the sim only when an action arrives, so simulated time is
 independent of inference latency; the latency is recorded, not hidden. The
-session is opened *before* dialing the robot socket so a cold start never trips
-the bridge's action-wait timeout.
+session is opened *before* dialing the robot socket so a slow session start
+never trips the bridge's action-wait timeout.
 
 Per episode the agent writes ``timing.jsonl`` (session, every request, the end),
 ``episode.json`` (local summary) and, optionally, a local MP4 of the three
@@ -84,7 +82,7 @@ def split_observation(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_observation(data: dict[str, Any]):
-    """The ``dreamscale.franka`` observation Dreamscale's RoboLab client sends."""
+    """The ``dreamscale.franka`` observation for one RoboLab step."""
     from dreamscale.franka import observe
 
     return observe(**split_observation(data))
@@ -129,7 +127,7 @@ def _timing_dict(timing: Any) -> dict[str, Any] | None:
 
 
 def server_inference_ms(timing: dict[str, Any] | None) -> float | None:
-    """Model compute as the server reports it (worker figure when present)."""
+    """Model compute time from the SDK's per-request timing, when reported."""
     if not timing:
         return None
     for key in ("worker_inference_ms", "server_inference_ms"):
@@ -225,7 +223,7 @@ class DreamscaleSession:
 
 
 class DreamscalePolicy:
-    """Opens the same session shape as Dreamscale's RoboLab client, per episode."""
+    """Opens one SDK session per episode."""
 
     def __init__(
         self,
@@ -235,7 +233,6 @@ class DreamscalePolicy:
         idle_timeout: int = 300,
         startup_timeout: float = 900.0,
         predict_timeout_s: float = 120.0,
-        region: str = "us-west-2",
         connect: Callable[..., Any] | None = None,
     ) -> None:
         if model not in MODELS:
@@ -247,15 +244,12 @@ class DreamscalePolicy:
         self.idle_timeout = idle_timeout
         self.startup_timeout = startup_timeout
         self.predict_timeout_s = predict_timeout_s
-        self.region = region
         self._connect = connect
 
     def connect_kwargs(self) -> dict[str, Any]:
         return {
-            "acceleration": "pytorch",
             "rtc": "off",
             "calibration": "off",
-            "region": self.region,
             "control_hz": CONTROL_HZ,
             "keep_warm": self.keep_warm,
             "idle_timeout": self.idle_timeout,
@@ -272,10 +266,8 @@ class DreamscalePolicy:
         def progress(message: str) -> None:
             print(f"[dreamscale {label}] {message}", file=sys.stderr, flush=True)
 
-        # Retry session admission a few times: a kept-warm worker can go offline
-        # just as a new session claims it ("the GPU worker failed to start"), and
-        # a capped route can briefly have no free container (CapacityError).
-        # Nothing has stepped yet, so retrying cannot affect the episode.
+        # Retry a session that fails to start or finds no free capacity. Nothing
+        # has stepped yet, so retrying cannot affect the episode.
         attempts = 4
         for attempt in range(1, attempts + 1):
             try:
@@ -287,7 +279,7 @@ class DreamscalePolicy:
                 )
                 if attempt == attempts or not retryable:
                     raise
-                progress(f"session admission failed ({error}); retrying {attempt}/{attempts - 1}")
+                progress(f"session start failed ({error}); retrying {attempt}/{attempts - 1}")
                 await asyncio.sleep(20 * attempt)
         return DreamscaleSession(policy, predict_timeout_s=self.predict_timeout_s)
 
@@ -457,8 +449,8 @@ class RobolabDreamscaleAgent(RobotAgent):
         session: PolicySession | None = None
         video = LocalVideo(episode_dir / "policy_views.mp4") if self.local_video else None
         try:
-            # Open the policy session before dialing the robot socket: a cold
-            # start must not trip the bridge's action-wait timeout.
+            # Open the policy session before dialing the robot socket: a slow
+            # session start must not trip the bridge's action-wait timeout.
             connect_started = time.monotonic()
             session = await self.policy.open(label=f"{task_name} ep{episode}")
             summary["session_connect_s"] = time.monotonic() - connect_started

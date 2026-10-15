@@ -1,106 +1,27 @@
 """One reusable inference session; HUD owns each episode's execution loop."""
 
 import asyncio
-import json
 import time
 from dataclasses import asdict
-from importlib.resources import files
 
 import dreamscale
-from dreamscale.config import load_config
-from dreamscale.control import ControlPlaneClient
 from hud.agents.robot.agent import RobotAgent
 from hud.agents.robot.model import Model
 from hud.telemetry.context import get_current_trace_id
 
 from .adapter import LiberoAdapter
-from .contract import CHECKPOINT, CHUNK_SIZE, CONTROL_HZ, MAX_STEPS, MODEL, REVISION, finite_array
+from .contract import CHUNK_SIZE, CONTROL_HZ, MAX_STEPS, MODEL, finite_array
 
 
-async def ready_target_artifact(policy, *, client_factory=ControlPlaneClient):
-    """Resolve cold-session metadata against an unambiguous live worker snapshot.
-
-    The SDK can retain the planned configuration after cold startup. Never
-    guess from a model name or an aggregate multi-worker status response.
-    """
-    config = load_config()
-    client = client_factory(config.control_plane_url, config.api_key)
-    try:
-        session = await client.get_session(policy.session_id)
-        status = await client.status()
-    finally:
-        await client.close()
-    if (
-        session.status != "ready"
-        or session.model != policy.model
-        or session.region != policy.region
-        or not session.target_key
-    ):
-        raise ValueError("Cannot verify the active Dreamscale session's target")
-    targets = status.get(policy.model, {}).get("targets", {}).values()
-    matches = [t for t in targets if t.get("target_key") == session.target_key]
-    if len(matches) != 1:
-        raise ValueError("Cannot identify one Dreamscale target for this session")
-    target = matches[0]
-    # worker_count includes disconnected or degraded registrations. The status
-    # API selects worker_capabilities from the ready pool whenever it is nonempty.
-    # Exactly one ready worker makes those capabilities unambiguous even when
-    # another registration remains in the pool.
-    if not target.get("ready") or any(
-        target.get(key) != 1 for key in ("ready_worker_count", "active_sessions")
-    ):
-        raise ValueError("Artifact fallback requires exactly one ready worker and active session")
-    caps = target.get("worker_capabilities") or {}
-    artifact = caps.get("tensorrt_artifact") or {}
-    if caps.get("backends") != ["tensorrt"]:
-        raise ValueError("Artifact fallback requires a dedicated TensorRT worker")
-    return {
-        "fingerprint": caps.get("tensorrt_artifact_fingerprint"),
-        "artifact_id": artifact.get("tensorrt_artifact_id"),
-    }
-
-
-def serving_identity(policy, *, resolved_artifact=None, control_hz=CONTROL_HZ):
-    config = policy.resolved_optimization_config
-    if policy.model != MODEL or config.backend != "tensorrt":
-        raise ValueError("The demo requires MolmoAct2-LIBERO served with TensorRT")
-    if config.rtc != "off" or config.calibration != "off":
-        raise ValueError("The synchronous HUD baseline requires RTC and calibration off")
+def serving_identity(policy, *, control_hz=CONTROL_HZ):
+    if policy.model != MODEL:
+        raise ValueError(f"Connected to {policy.model}; expected {MODEL}")
     if (policy.action_hz, policy.chunk_size) != (control_hz, CHUNK_SIZE):
         raise ValueError("Dreamscale's resolved LIBERO timing contract has changed")
-    fingerprint = (
-        resolved_artifact["fingerprint"]
-        if resolved_artifact is not None
-        else config.tensorrt_artifact_fingerprint
-    )
-    artifact_id = (
-        resolved_artifact["artifact_id"]
-        if resolved_artifact is not None
-        else config.tensorrt_artifact_id
-    )
-    if not fingerprint:
-        raise ValueError("Dreamscale did not report its TensorRT artifact fingerprint")
-    contracts = json.loads(files("dreamscale_hud").joinpath("serving_contracts.json").read_text())
-    artifact = contracts.get(artifact_id)
-    if artifact is None or artifact["fingerprint"] != fingerprint:
-        raise ValueError("Unverified TensorRT artifact; verify its checkpoint manifest before use")
-    if artifact["checkpoint"] != CHECKPOINT or artifact["revision"] != REVISION:
-        raise ValueError("The TensorRT artifact targets a different checkpoint revision")
     return {
         "session_id": policy.session_id,
         "model": policy.model,
-        "region": policy.region,
-        "backend": config.backend,
         "transport": policy.transport_mode,
-        "checkpoint": CHECKPOINT,
-        "checkpoint_revision": REVISION,
-        "checkpoint_verification": "manifest_and_engine_fingerprint",
-        "artifact_identity_source": "single_ready_worker_status"
-        if resolved_artifact is not None
-        else "session_configuration",
-        "session_artifact_id": config.tensorrt_artifact_id,
-        "tensorrt_artifact_fingerprint": fingerprint,
-        "tensorrt_artifact_id": artifact_id,
         "action_hz": policy.action_hz,
         "chunk_size": policy.chunk_size,
     }
@@ -143,7 +64,6 @@ class DreamscaleRobotAgent(RobotAgent):
     def __init__(
         self,
         *,
-        region="us-west-2",
         control_hz=CONTROL_HZ,
         emit=None,
         connector=None,
@@ -152,7 +72,6 @@ class DreamscaleRobotAgent(RobotAgent):
         if control_hz not in (10, 20):
             raise ValueError("Supported LIBERO control rates are 10 and 20 Hz")
         self.control_hz = control_hz
-        self.region = region
         self.emit = emit or (lambda event, **fields: None)
         self._connector = connector or dreamscale.aconnect
         self._policy = None
@@ -179,18 +98,15 @@ class DreamscaleRobotAgent(RobotAgent):
         return self
 
     async def _connect(self):
-        self.emit("provider_starting", model=MODEL, region=self.region)
+        self.emit("provider_starting", model=MODEL)
         started = time.monotonic()
         try:
             self._policy = await self._connector(
                 model=MODEL,
-                region=self.region,
-                acceleration="tensorrt",
                 rtc="off",
                 calibration="off",
                 control_hz=self.control_hz,
                 keep_warm=0,
-                idle_timeout=900,
                 startup_timeout=900,
             )
             self.emit(
@@ -211,12 +127,7 @@ class DreamscaleRobotAgent(RobotAgent):
                     and isinstance(value, (int, float))
                 },
             )
-            resolved_artifact = None
-            if not self._policy.resolved_optimization_config.tensorrt_artifact_fingerprint:
-                resolved_artifact = await ready_target_artifact(self._policy)
-            self.identity = serving_identity(
-                self._policy, resolved_artifact=resolved_artifact, control_hz=self.control_hz
-            )
+            self.identity = serving_identity(self._policy, control_hz=self.control_hz)
             self.model = DreamscaleModel(self._policy, self.emit)
             self.emit("provider_ready", duration_s=time.monotonic() - started, **self.identity)
         except BaseException:
@@ -267,7 +178,7 @@ class DreamscaleRobotAgent(RobotAgent):
                 )
             self.emit("environment_ready", trace_id=self._trace_id)
             # Simulation provisioning overlaps session startup. No observation is
-            # submitted until backend/checkpoint identity has been verified.
+            # submitted until the session's model and timing have been checked.
             await asyncio.shield(self._connection_task)
             self.model.trace_id = self._trace_id
             run.trace.extra["dreamscale"] = dict(self.identity)
